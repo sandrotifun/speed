@@ -1,0 +1,137 @@
+-- [[ Rscripts Risk Notice ]]
+-- This script is not verified by rscripts.net. Deal with caution.
+-- [[ End Rscripts Risk Notice ]]
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "speed hack",
+    LoadingTitle = "speed hack",
+    LoadingSubtitle = "by sashamotyan",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "Antigravity_ATV_WinFarm",
+        FileName = "Config"
+    },
+    Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true },
+    KeySystem = false,
+})
+
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid")
+end)
+
+-- Variables
+local VehicleSpeed = 50
+local BoostKeybind = Enum.KeyCode.E
+local ListeningForBind = false
+
+-- Functions
+local function GetVehicle()
+    local Seat = Humanoid.SeatPart
+    if Seat and Seat:IsA("VehicleSeat") then
+        return Seat.Parent
+    end
+    return nil
+end
+
+local function BoostForward()
+    local Vehicle = GetVehicle()
+    if Vehicle and Vehicle.PrimaryPart then
+        Vehicle.PrimaryPart.AssemblyLinearVelocity =
+            Vehicle.PrimaryPart.CFrame.LookVector * VehicleSpeed * 5
+    elseif Vehicle then
+        local Base = Vehicle:FindFirstChild("Chassis")
+            or Vehicle:FindFirstChild("Body")
+            or Vehicle:FindFirstChildWhichIsA("BasePart")
+        if Base then
+            Base.AssemblyLinearVelocity = Base.CFrame.LookVector * VehicleSpeed * 5
+        end
+    else
+        Rayfield:Notify({
+            Title = "Error",
+            Content = "You are not in a vehicle!",
+            Duration = 5,
+            Image = 4483345998,
+        })
+    end
+end
+
+-- Vehicle Tab (единственная вкладка)
+local VehicleTab = Window:CreateTab("Vehicle", 4483345998)
+
+VehicleTab:CreateParagraph({
+    Title = "Instructions",
+    Content = "Sit in a vehicle to use these features."
+})
+
+VehicleTab:CreateSlider({
+    Name = "Boost Speed",
+    Range = {0, 500},
+    Increment = 5,
+    Suffix = "Velocity",
+    CurrentValue = 50,
+    Flag = "VehicleSpeed",
+    Callback = function(Value)
+        VehicleSpeed = Value
+    end,
+})
+
+VehicleTab:CreateButton({
+    Name = "Boost Forward",
+    Callback = function()
+        BoostForward()
+    end,
+})
+
+-- Кнопка установки бинда: жмёшь её, потом жмёшь любую клавишу
+VehicleTab:CreateButton({
+    Name = "Set Boost Bind",
+    Callback = function()
+        ListeningForBind = true
+        Rayfield:Notify({
+            Title = "Bind",
+            Content = "Press any key to bind Boost Forward...",
+            Duration = 3,
+            Image = 4483345998,
+        })
+    end,
+})
+
+-- Слушатель нажатий
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+
+    -- Режим ожидания бинда: ловим любую клавишу
+    if ListeningForBind then
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            BoostKeybind = input.KeyCode
+            ListeningForBind = false
+            Rayfield:Notify({
+                Title = "Bind Set",
+                Content = "Boost Forward bound to: " .. input.KeyCode.Name,
+                Duration = 4,
+                Image = 4483345998,
+            })
+        end
+        return
+    end
+
+    -- Не срабатывать, пока фокус в текстовом поле (чат и т.п.)
+    if UserInputService:GetFocusedTextBox() then return end
+
+    -- Триггер бинда
+    if input.KeyCode == BoostKeybind then
+        BoostForward()
+    end
+end)
+
+Rayfield:LoadConfiguration()
