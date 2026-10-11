@@ -23,20 +23,20 @@ local ListeningForBind = false
 
 local AW = {
     Enabled   = true,
-    TARGET    = 32,
+    TARGET    = 75,
     FALL_SPD  = -3,
     RISE_SPD  = 4,
     PULSE_MIN = 0.06,
     PULSE_MAX = 0.20,
     SMOOTH    = 0.5,
-    OVER      = 45,
+    OVER      = 77,
     LOGS      = false,
-    KICK_TIME = 0.55,
+    KICK_TIME = 0.3,
     Cruise    = false,
     -- Перевал P
-    PEnabled  = false,
-    PFrom     = 60,
-    PTo       = 120,
+    PEnabled  = true,
+    PFrom     = 82,
+    PTo       = 180,
     PKey      = Enum.KeyCode.P,
 }
 
@@ -119,23 +119,23 @@ AWTab:CreateToggle({
 })
 AWTab:CreateSlider({
     Name = "Целевой угол", Range = {10, 120}, Increment = 1,
-    CurrentValue = 32, Callback = function(v) AW.TARGET = v end,
+    CurrentValue = 75, Callback = function(v) AW.TARGET = v end,
 })
 AWTab:CreateSlider({
     Name = "Сброс (S) при угле", Range = {30, 160}, Increment = 1,
-    CurrentValue = 45, Callback = function(v) AW.OVER = v end,
+    CurrentValue = 77, Callback = function(v) AW.OVER = v end,
 })
 
 AWTab:CreateSection("Подрыв")
 AWTab:CreateSlider({
     Name = "Начальный подрыв", Range = {0, 1.5}, Increment = 0.05,
-    CurrentValue = 0.55, Callback = function(v) AW.KICK_TIME = v end,
+    CurrentValue = 0.3, Callback = function(v) AW.KICK_TIME = v end,
 })
 
 AWTab:CreateSection("Перевал (P)")
 AWTab:CreateToggle({
     Name = "Зажимать P при перевале",
-    CurrentValue = false,
+    CurrentValue = true,
     Callback = function(v)
         AW.PEnabled = v
         Rayfield:Notify({Title="Перевал P", Content=v and "ВКЛ" or "ВЫКЛ", Duration=2})
@@ -143,11 +143,11 @@ AWTab:CreateToggle({
 })
 AWTab:CreateSlider({
     Name = "P: от угла", Range = {20, 180}, Increment = 1,
-    CurrentValue = 60, Callback = function(v) AW.PFrom = v end,
+    CurrentValue = 82, Callback = function(v) AW.PFrom = v end,
 })
 AWTab:CreateSlider({
     Name = "P: до угла", Range = {20, 180}, Increment = 1,
-    CurrentValue = 120, Callback = function(v) AW.PTo = v end,
+    CurrentValue = 180, Callback = function(v) AW.PTo = v end,
 })
 
 -- ==================== ТЮНИНГ AW ====================
@@ -188,11 +188,11 @@ MiscTab:CreateSection("Действия")
 MiscTab:CreateButton({
     Name = "Сбросить настройки AW",
     Callback = function()
-        AW.TARGET = 32; AW.FALL_SPD = -3; AW.RISE_SPD = 4
+        AW.TARGET = 75; AW.FALL_SPD = -3; AW.RISE_SPD = 4
         AW.PULSE_MIN = 0.06; AW.PULSE_MAX = 0.20
-        AW.SMOOTH = 0.5; AW.OVER = 45; AW.KICK_TIME = 0.55
-        AW.Cruise = false; AW.PEnabled = false
-        AW.PFrom = 60; AW.PTo = 120
+        AW.SMOOTH = 0.5; AW.OVER = 77; AW.KICK_TIME = 0.3
+        AW.Cruise = false; AW.PEnabled = true
+        AW.PFrom = 82; AW.PTo = 180
         Rayfield:Notify({Title="Auto Wheelie", Content="Настройки сброшены", Duration=3})
     end,
 })
