@@ -1,93 +1,413 @@
--- ==================== AUTO NOHAND v4 ====================
-local nhRecoverStart = 0
-local nhZCooldown    = 0
-local nhLastLog      = 0
-local nhWSent        = false
+--[[ Sashamotyan Hub — Speed Hack + Auto Wheelie ]]
 
-local function PN2(...) if NH.Logs then print("[NH]", ...) end end
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Отправка Z с cooldown
-local function nhPressZ()
-    if tick() < nhZCooldown then return end
-    nhZCooldown = tick() + 0.35
-    task.spawn(function()
-        VIM:SendKeyEvent(true,  NH.ZKey, false, game)
-        task.wait(0.10)
-        VIM:SendKeyEvent(false, NH.ZKey, false, game)
-    end)
-    PN2("Z pressed")
-end
+local Players    = game:GetService("Players")
+local UIS        = game:GetService("UserInputService")
+local VIM        = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
--- W с отслеживанием (без спама)
-local function nhSetW(on)
-    if on == nhWSent then return end
-    nhWSent = on
-    VIM:SendKeyEvent(on, Enum.KeyCode.W, false, game)
-end
+local LocalPlayer = Players.LocalPlayer
+local Character   = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid    = Character:WaitForChild("Humanoid")
 
--- Старт режима
-local function nhStart()
-    if NH.State ~= "LOCKED" then return end
-    NH.State = "BALANCE"
-    nhPressZ()       -- убираем руки
-    PN2("START → hands off")
-end
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    Humanoid  = char:WaitForChild("Humanoid")
+end)
 
--- Стоп режима
-local function nhStop()
-    if NH.State == "LOCKED" then return end
-    nhSetW(false)
-    if NH.State == "BALANCE" then
-        nhPressZ()   -- возвращаем руки (они были убраны)
+-- ==================== НАСТРОЙКИ ====================
+
+-- Speed hack
+local VehicleSpeed   = 50
+local BoostKeybind   = Enum.KeyCode.LeftAlt   -- ← изменено с E на Alt
+local ListeningForBind = false
+
+-- Auto Wheelie
+local AW = {
+    Enabled   = true,
+    TARGET    = 32,
+    FALL_SPD  = -3,
+    RISE_SPD  = 4,
+    PULSE_MIN = 0.06,
+    PULSE_MAX = 0.20,
+    SMOOTH    = 0.5,
+    OVER      = 45,
+    LOGS      = false,
+    KICK_TIME = 0.55,
+    Cruise    = false,   -- ← изменено с true на false
+}
+
+local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
+
+-- ==================== ОКНО ====================
+local Window = Rayfield:CreateWindow({
+    Name = "Sashamotyan Hub",
+    LoadingTitle = "Sashamotyan Hub",
+    LoadingSubtitle = "by sashamotyan",
+    Theme = "Default",
+    ToggleUIKeybind = "K",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "SashamotyanHub",
+        FileName = "Config"
+    },
+})
+
+-- ==================== ВКЛАДКА: SPEED HACK ====================
+local SpeedTab = Window:CreateTab("Speed Hack", 4483345998)
+SpeedTab:CreateSection("Инструкция")
+SpeedTab:CreateParagraph({
+    Title = "Как пользоваться",
+    Content = "Сядь в машину. Настрой скорость и жми ALT (или свою клавишу)."
+})
+
+SpeedTab:CreateSection("Настройки")
+
+SpeedTab:CreateSlider({
+    Name = "Boost Speed",
+    Range = {0, 100},
+    Increment = 1,
+    CurrentValue = 50,
+    Callback = function(v) VehicleSpeed = v end,
+})
+
+SpeedTab:CreateButton({
+    Name = "Boost Forward (сразу)",
+    Callback = function() end, -- переопределим ниже
+})
+
+SpeedTab:CreateButton({
+    Name = "Set Boost Bind",
+    Callback = function()
+        ListeningForBind = true
+        Rayfield:Notify({
+            Title = "Bind",
+            Content = "Нажми любую клавишу для бинда...",
+            Duration = 3,
+        })
+    end,
+})
+
+-- ==================== SPEED HACK ЛОГИКА ====================
+local function GetVehicle()
+    local Seat = Humanoid.SeatPart
+    if Seat and Seat:IsA("VehicleSeat") then
+        return Seat.Parent
     end
-    NH.State = "LOCKED"
-    PN2("STOP → hands returned")
+    return nil
 end
 
--- Тик
-local function nohandTick(dt)
-    if NH.State == "LOCKED" then return end
-    if not isInVehicle() then nhStop() return end
-
-    local pitch = getPitch(0.5)
-    if not pitch then return end
-
-    if NH.Logs and tick() - nhLastLog > 0.4 then
-        nhLastLog = tick()
-        PN2(string.format("state=%s  pitch=%.1f  W=%s",
-            NH.State, pitch, tostring(nhWSent)))
-    end
-
-    if NH.State == "BALANCE" then
-        -- Руки убраны, ждём просадки
-        if pitch < NH.RecoverThreshold then
-            nhPressZ()                 -- берём руль
-            NH.State = "RECOVER"
-            nhRecoverStart = tick()
-            PN2("balance lost → grab wheel")
+local function BoostForward()
+    local Vehicle = GetVehicle()
+    if Vehicle and Vehicle.PrimaryPart then
+        Vehicle.PrimaryPart.AssemblyLinearVelocity =
+            Vehicle.PrimaryPart.CFrame.LookVector * VehicleSpeed * 5
+    elseif Vehicle then
+        local Base = Vehicle:FindFirstChild("Chassis")
+            or Vehicle:FindFirstChild("Body")
+            or Vehicle:FindFirstChildWhichIsA("BasePart")
+        if Base then
+            Base.AssemblyLinearVelocity = Base.CFrame.LookVector * VehicleSpeed * 5
         end
-    elseif NH.State == "RECOVER" then
-        local elapsed = tick() - nhRecoverStart
+    else
+        Rayfield:Notify({
+            Title = "Ошибка",
+            Content = "Ты не в машине!",
+            Duration = 3,
+        })
+    end
+end
 
-        -- Восстановились
-        if pitch >= NH.ReturnThreshold then
-            nhSetW(false)
-            nhPressZ()                 -- убираем руки
-            NH.State = "BALANCE"
-            PN2("balance ok → release hands")
+-- Пересоздаём кнопку с рабочей функцией
+SpeedTab:CreateButton({
+    Name = "(замена) Boost Forward работает → используй бинд",
+    Callback = function() BoostForward() end,
+})
+
+-- ==================== ВКЛАДКА: AUTO WHEELIE ====================
+local AWTab = Window:CreateTab("Auto Wheelie", 4483362458)
+
+AWTab:CreateSection("Управление")
+
+AWTab:CreateToggle({
+    Name = "Включить автовилли",
+    CurrentValue = true,
+    Callback = function(v) AW.Enabled = v end,
+})
+
+AWTab:CreateToggle({
+    Name = "Круиз (W держится)",
+    CurrentValue = false,   -- ← изменено с true на false
+    Callback = function(v) AW.Cruise = v end,
+})
+
+AWTab:CreateSlider({
+    Name = "Целевой угол",
+    Range = {10, 120},
+    Increment = 1,
+    CurrentValue = 32,
+    Callback = function(v) AW.TARGET = v end,
+})
+
+AWTab:CreateSlider({
+    Name = "Сброс (S) при угле",
+    Range = {30, 160},
+    Increment = 1,
+    CurrentValue = 45,
+    Callback = function(v) AW.OVER = v end,
+})
+
+AWTab:CreateSection("Подрыв")
+
+AWTab:CreateSlider({
+    Name = "Начальный подрыв",
+    Range = {0, 1.5},
+    Increment = 0.05,
+    CurrentValue = 0.55,
+    Callback = function(v) AW.KICK_TIME = v end,
+})
+
+-- ==================== ВКЛАДКА: ТЮНИНГ AW ====================
+local TuneTab = Window:CreateTab("Тюнинг AW", 4483362458)
+
+TuneTab:CreateSection("Газ")
+TuneTab:CreateSlider({
+    Name = "Порог падения",
+    Range = {-20, 0},
+    Increment = 1,
+    CurrentValue = -3,
+    Callback = function(v) AW.FALL_SPD = v end,
+})
+TuneTab:CreateSlider({
+    Name = "Порог роста",
+    Range = {0, 30},
+    Increment = 1,
+    CurrentValue = 4,
+    Callback = function(v) AW.RISE_SPD = v end,
+})
+
+TuneTab:CreateSection("Импульсы")
+TuneTab:CreateSlider({
+    Name = "Мин. импульс",
+    Range = {0.02, 0.30},
+    Increment = 0.01,
+    CurrentValue = 0.06,
+    Callback = function(v) AW.PULSE_MIN = v end,
+})
+TuneTab:CreateSlider({
+    Name = "Макс. импульс",
+    Range = {0.05, 0.60},
+    Increment = 0.01,
+    CurrentValue = 0.20,
+    Callback = function(v) AW.PULSE_MAX = v end,
+})
+
+TuneTab:CreateSection("Сглаживание")
+TuneTab:CreateSlider({
+    Name = "Сглаживание угла",
+    Range = {0.1, 1.0},
+    Increment = 0.05,
+    CurrentValue = 0.5,
+    Callback = function(v) AW.SMOOTH = v end,
+})
+
+-- ==================== ВКЛАДКА: ПРОЧЕЕ ====================
+local MiscTab = Window:CreateTab("Прочее", 4483362458)
+
+MiscTab:CreateSection("Отладка")
+MiscTab:CreateToggle({
+    Name = "Печатать логи",
+    CurrentValue = false,
+    Callback = function(v) AW.LOGS = v end,
+})
+
+MiscTab:CreateSection("Действия")
+MiscTab:CreateButton({
+    Name = "Сбросить настройки AW",
+    Callback = function()
+        AW.TARGET    = 32
+        AW.FALL_SPD  = -3
+        AW.RISE_SPD  = 4
+        AW.PULSE_MIN = 0.06
+        AW.PULSE_MAX = 0.20
+        AW.SMOOTH    = 0.5
+        AW.OVER      = 45
+        AW.KICK_TIME = 0.55
+        AW.Cruise    = false
+        Rayfield:Notify({Title="Auto Wheelie", Content="Настройки сброшены", Duration=3})
+    end,
+})
+
+-- ==================== ВВОД: БИНД SPEED ====================
+UIS.InputBegan:Connect(function(input, gameProcessed)
+
+    if ListeningForBind then
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            BoostKeybind = input.KeyCode
+            ListeningForBind = false
+            Rayfield:Notify({
+                Title = "Bind Set",
+                Content = "Boost Forward привязан к: " .. input.KeyCode.Name,
+                Duration = 4,
+            })
+        end
+        return
+    end
+
+    if UIS:GetFocusedTextBox() then return end
+
+    if input.KeyCode == BoostKeybind then
+        BoostForward()
+    end
+end)
+
+-- ==================== AUTO WHEELIE ЛОГИКА ====================
+local ctrl, prevCtrl = false, false
+UIS.InputBegan:Connect(function(i)
+    if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then
+        ctrl = true
+    end
+end)
+UIS.InputEnded:Connect(function(i)
+    if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then
+        ctrl = false
+    end
+end)
+
+local function isInVehicle()
+    local char = Players.LocalPlayer.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return false end
+    return hum.SeatPart:IsA("VehicleSeat") or hum.SeatPart:IsA("Seat")
+end
+
+local smoothPitch = 0
+local function getPitch()
+    local char = Players.LocalPlayer.Character
+    if not char then return nil end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return nil end
+    local seat = hum.SeatPart
+    if not seat:IsA("BasePart") then return nil end
+    local raw = math.deg(math.asin(math.clamp(seat.CFrame.LookVector.Y, -1, 1)))
+    smoothPitch = smoothPitch + (raw - smoothPitch) * AW.SMOOTH
+    return smoothPitch
+end
+
+local wSent, sSent = false, false
+local function sendW(d)
+    if d == wSent then return end
+    wSent = d
+    VIM:SendKeyEvent(d, Enum.KeyCode.W, false, game)
+end
+local function sendS(d)
+    if d == sSent then return end
+    sSent = d
+    VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game)
+end
+
+local prevPitch = 0
+local wTimer, wLockout, lastLog = 0, 0, 0
+local kickTimer, kickArmed = 0, false
+local cruiseRelease = 0
+
+RunService.Heartbeat:Connect(function(dt)
+    -- Нажатие Ctrl
+    if ctrl and not prevCtrl then
+        kickArmed = true
+        kickTimer = 0
+        smoothPitch = 0
+    end
+    if not ctrl then
+        kickArmed = false
+        kickTimer = 0
+        cruiseRelease = 0
+    end
+    prevCtrl = ctrl
+
+    if not AW.Enabled or not ctrl or not isInVehicle() then
+        sendW(false); sendS(false)
+        wTimer, wLockout = 0, 0
+        return
+    end
+
+    local pitch = getPitch()
+    if not pitch then sendW(false); sendS(false) return end
+    local speed = (pitch - prevPitch) / math.max(dt, 0.001)
+    prevPitch = pitch
+
+    -- Аварийный сброс
+    if pitch >= AW.OVER then
+        sendW(false); sendS(true)
+        wTimer, wLockout, kickTimer, kickArmed = 0, 0.15, 0, false
+        cruiseRelease = 0.25
+        return
+    end
+
+    sendS(false)
+
+    -- ==== ПОДРЫВ ====
+    if kickArmed then
+        if kickTimer <= 0 then kickTimer = AW.KICK_TIME end
+        kickTimer = kickTimer - dt
+        sendW(true)
+        if kickTimer <= 0 or pitch >= AW.TARGET then
+            kickArmed = false
+            wLockout = 0.10
+        end
+        return
+    end
+
+    -- ==== КРУИЗ ====
+    if AW.Cruise then
+        if cruiseRelease > 0 then
+            cruiseRelease = cruiseRelease - dt
+            sendW(false)
             return
         end
-
-        -- Аварийный таймаут (если восстанавливаемся слишком долго)
-        if elapsed > NH.MaxRecoverTime then
-            nhSetW(false)
-            nhPressZ()                 -- убираем руки
-            NH.State = "BALANCE"
-            PN2("recover timeout → release hands")
-            return
+        if pitch > AW.TARGET then
+            sendW(false)
+            cruiseRelease = 0.08
+        else
+            sendW(true)
         end
-
-        -- Газуем
-        nhSetW(true)
+        if AW.LOGS and tick() - lastLog > 0.4 then
+            lastLog = tick()
+            P(string.format("[CRUISE] pitch=%.1f°  speed=%.0f  W=%s", pitch, speed, tostring(wSent)))
+        end
+        return
     end
-end
+
+    -- ==== ИМПУЛЬСЫ ====
+    if wTimer > 0 then wTimer = wTimer - dt end
+    if wLockout > 0 then wLockout = wLockout - dt end
+
+    if wTimer > 0 then
+        sendW(true)
+    else
+        sendW(false)
+        if wLockout <= 0 and pitch < AW.TARGET and speed < AW.RISE_SPD then
+            local err  = AW.TARGET - pitch
+            local fall = math.max(0, -speed)
+            local duty = math.clamp(err/20 + fall/30, 0, 1)
+            wTimer   = AW.PULSE_MIN + (AW.PULSE_MAX - AW.PULSE_MIN) * duty
+            wLockout = 0.25
+        end
+    end
+
+    if AW.LOGS and tick() - lastLog > 0.4 then
+        lastLog = tick()
+        P(string.format("[IMPULSE] pitch=%.1f°  speed=%.0f  W=%s", pitch, speed, tostring(wSent)))
+    end
+end)
+
+-- ==================== ЗАГРУЗКА ====================
+Rayfield:LoadConfiguration()
+
+Rayfield:Notify({
+    Title = "Sashamotyan Hub",
+    Content = "Загружено. Boost: Alt | Меню: K",
+    Duration = 5,
+})
