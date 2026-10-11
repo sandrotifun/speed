@@ -129,7 +129,7 @@ AWTab:CreateToggle({
 
 AWTab:CreateToggle({
     Name = "Круиз (W держится)",
-    CurrentValue = true,
+    CurrentValue = false,
     Callback = function(v) AW.Cruise = v end,
 })
 
