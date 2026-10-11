@@ -36,6 +36,12 @@ local AW = {
     LOGS      = false,
     KICK_TIME = 0.55,
     Cruise    = false,
+    -- Нажатие P при перевале
+    PEnabled  = false,
+    PFrom     = 60,
+    PTo       = 120,
+    PKey      = Enum.KeyCode.P,
+    PCooldown = 1.0,
 }
 
 local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
