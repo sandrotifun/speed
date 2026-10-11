@@ -20,7 +20,7 @@ end)
 
 -- Speed hack
 local VehicleSpeed   = 50
-local BoostKeybind   = Enum.KeyCode.LeftAlt   -- ← изменено с E на Alt
+local BoostKeybind   = Enum.KeyCode.LeftAlt
 local ListeningForBind = false
 
 -- Auto Wheelie
@@ -35,61 +35,12 @@ local AW = {
     OVER      = 45,
     LOGS      = false,
     KICK_TIME = 0.55,
-    Cruise    = false,   -- ← изменено с true на false
+    Cruise    = false,
 }
 
 local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
 
--- ==================== ОКНО ====================
-local Window = Rayfield:CreateWindow({
-    Name = "Sashamotyan Hub",
-    LoadingTitle = "Sashamotyan Hub",
-    LoadingSubtitle = "by sashamotyan",
-    Theme = "Default",
-    ToggleUIKeybind = "K",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "SashamotyanHub",
-        FileName = "Config"
-    },
-})
-
--- ==================== ВКЛАДКА: SPEED HACK ====================
-local SpeedTab = Window:CreateTab("Speed Hack", 4483345998)
-SpeedTab:CreateSection("Инструкция")
-SpeedTab:CreateParagraph({
-    Title = "Как пользоваться",
-    Content = "Сядь в машину. Настрой скорость и жми ALT (или свою клавишу)."
-})
-
-SpeedTab:CreateSection("Настройки")
-
-SpeedTab:CreateSlider({
-    Name = "Boost Speed",
-    Range = {0, 100},
-    Increment = 1,
-    CurrentValue = 50,
-    Callback = function(v) VehicleSpeed = v end,
-})
-
-SpeedTab:CreateButton({
-    Name = "Boost Forward (сразу)",
-    Callback = function() end, -- переопределим ниже
-})
-
-SpeedTab:CreateButton({
-    Name = "Set Boost Bind",
-    Callback = function()
-        ListeningForBind = true
-        Rayfield:Notify({
-            Title = "Bind",
-            Content = "Нажми любую клавишу для бинда...",
-            Duration = 3,
-        })
-    end,
-})
-
--- ==================== SPEED HACK ЛОГИКА ====================
+-- ==================== SPEED HACK ФУНКЦИИ (объявлены ДО окна) ====================
 local function GetVehicle()
     local Seat = Humanoid.SeatPart
     if Seat and Seat:IsA("VehicleSeat") then
@@ -119,10 +70,53 @@ local function BoostForward()
     end
 end
 
--- Пересоздаём кнопку с рабочей функцией
+-- ==================== ОКНО ====================
+local Window = Rayfield:CreateWindow({
+    Name = "Sashamotyan Hub",
+    LoadingTitle = "Sashamotyan Hub",
+    LoadingSubtitle = "by sashamotyan",
+    Theme = "Default",
+    ToggleUIKeybind = "K",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "SashamotyanHub",
+        FileName = "Config"
+    },
+})
+
+-- ==================== ВКЛАДКА: SPEED HACK ====================
+local SpeedTab = Window:CreateTab("Speed Hack", 4483345998)
+SpeedTab:CreateSection("Инструкция")
+SpeedTab:CreateParagraph({
+    Title = "Как пользоваться",
+    Content = "Сядь в машину. Настрой скорость и жми ALT (или свою клавишу)."
+})
+
+SpeedTab:CreateSection("Настройки")
+
+SpeedTab:CreateSlider({
+    Name = "Boost Speed",
+    Range = {0, 500},
+    Increment = 5,
+    CurrentValue = 50,
+    Callback = function(v) VehicleSpeed = v end,
+})
+
 SpeedTab:CreateButton({
-    Name = "(замена) Boost Forward работает → используй бинд",
+    Name = "Boost Forward (сразу)",
     Callback = function() BoostForward() end,
+})
+
+SpeedTab:CreateButton({
+    Name = "Set Boost Bind",
+    Callback = function()
+        ListeningForBind = true
+        Rayfield:Notify({
+            Title = "Bind",
+            Content = "Нажми любую клавишу для бинда...",
+            Duration = 3,
+        })
+    end,
 })
 
 -- ==================== ВКЛАДКА: AUTO WHEELIE ====================
@@ -138,7 +132,7 @@ AWTab:CreateToggle({
 
 AWTab:CreateToggle({
     Name = "Круиз (W держится)",
-    CurrentValue = false,   -- ← изменено с true на false
+    CurrentValue = false,
     Callback = function(v) AW.Cruise = v end,
 })
 
