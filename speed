@@ -1,4 +1,4 @@
---[[ Sashamotyan Hub — Speed Hack + Auto Wheelie + Перевал P (hold) ]]
+--[[ Sashamotyan Hub — Speed Hack + Auto Wheelie + P + Configs ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -33,7 +33,6 @@ local AW = {
     LOGS      = false,
     KICK_TIME = 0.3,
     Cruise    = false,
-    -- Перевал P
     PEnabled  = true,
     PFrom     = 82,
     PTo       = 180,
@@ -41,6 +40,108 @@ local AW = {
 }
 
 local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
+
+-- ==================== CONFIG SYSTEM ====================
+local CONFIG_FOLDER = "SashamotyanHub_Configs"
+if not isfolder(CONFIG_FOLDER) then
+    makefolder(CONFIG_FOLDER)
+end
+
+local Elements = {}   -- ссылки на элементы UI для обновления
+
+local function keyByName(name)
+    for _, k in ipairs(Enum.KeyCode:GetEnumItems()) do
+        if k.Name == name then return k end
+    end
+    return Enum.KeyCode.LeftAlt
+end
+
+local function buildConfig()
+    return {
+        VehicleSpeed = VehicleSpeed,
+        BoostKeybind = BoostKeybind.Name,
+        AW = {
+            Enabled   = AW.Enabled,
+            TARGET    = AW.TARGET,
+            FALL_SPD  = AW.FALL_SPD,
+            RISE_SPD  = AW.RISE_SPD,
+            PULSE_MIN = AW.PULSE_MIN,
+            PULSE_MAX = AW.PULSE_MAX,
+            SMOOTH    = AW.SMOOTH,
+            OVER      = AW.OVER,
+            KICK_TIME = AW.KICK_TIME,
+            Cruise    = AW.Cruise,
+            PEnabled  = AW.PEnabled,
+            PFrom     = AW.PFrom,
+            PTo       = AW.PTo,
+        }
+    }
+end
+
+local function applyConfig(cfg)
+    if cfg.VehicleSpeed then VehicleSpeed = cfg.VehicleSpeed end
+    if cfg.BoostKeybind then BoostKeybind = keyByName(cfg.BoostKeybind) end
+    if cfg.AW then
+        for k, v in pairs(cfg.AW) do
+            AW[k] = v
+        end
+    end
+    -- Обновляем UI
+    if Elements.Speed     then Elements.Speed:Set(VehicleSpeed) end
+    if Elements.Enabled   then Elements.Enabled:Set(AW.Enabled) end
+    if Elements.Cruise    then Elements.Cruise:Set(AW.Cruise) end
+    if Elements.Target    then Elements.Target:Set(AW.TARGET) end
+    if Elements.Over      then Elements.Over:Set(AW.OVER) end
+    if Elements.Kick      then Elements.Kick:Set(AW.KICK_TIME) end
+    if Elements.PEnabled  then Elements.PEnabled:Set(AW.PEnabled) end
+    if Elements.PFrom     then Elements.PFrom:Set(AW.PFrom) end
+    if Elements.PTo       then Elements.PTo:Set(AW.PTo) end
+    if Elements.FallSpd   then Elements.FallSpd:Set(AW.FALL_SPD) end
+    if Elements.RiseSpd   then Elements.RiseSpd:Set(AW.RISE_SPD) end
+    if Elements.PulseMin  then Elements.PulseMin:Set(AW.PULSE_MIN) end
+    if Elements.PulseMax  then Elements.PulseMax:Set(AW.PULSE_MAX) end
+    if Elements.Smooth    then Elements.Smooth:Set(AW.SMOOTH) end
+    if Elements.Logs      then Elements.Logs:Set(AW.LOGS) end
+end
+
+local function saveConfig(name)
+    if not name or name == "" then return false, "Пустое имя" end
+    local ok, encoded = pcall(function() return game:GetService("HttpService"):JSONEncode(buildConfig()) end)
+    if not ok then return false, "Ошибка кодирования" end
+    local path = CONFIG_FOLDER .. "/" .. name .. ".json"
+    local sok, serr = pcall(function() writefile(path, encoded) end)
+    if not sok then return false, "Ошибка записи: " .. tostring(serr) end
+    return true
+end
+
+local function loadConfig(name)
+    local path = CONFIG_FOLDER .. "/" .. name .. ".json"
+    if not isfile(path) then return false, "Файл не найден" end
+    local ok, data = pcall(function() return readfile(path) end)
+    if not ok then return false, "Ошибка чтения" end
+    local dok, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
+    if not dok then return false, "Ошибка парсинга" end
+    applyConfig(cfg)
+    return true
+end
+
+local function deleteConfig(name)
+    local path = CONFIG_FOLDER .. "/" .. name .. ".json"
+    if not isfile(path) then return false end
+    pcall(function() delfile(path) end)
+    return true
+end
+
+local function listConfigs()
+    local out = {}
+    local ok, files = pcall(function() return listfiles(CONFIG_FOLDER) end)
+    if not ok or not files then return out end
+    for _, path in ipairs(files) do
+        local name = path:match("([^/\\]+)%.json$")
+        if name then table.insert(out, name) end
+    end
+    return out
+end
 
 -- ==================== SPEED HACK ФУНКЦИИ ====================
 local function GetVehicle()
@@ -72,11 +173,6 @@ local Window = Rayfield:CreateWindow({
     LoadingSubtitle = "by sashamotyan",
     Theme = "Default",
     ToggleUIKeybind = "K",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "SashamotyanHub",
-        FileName = "Config"
-    },
 })
 
 -- ==================== SPEED HACK ====================
@@ -88,9 +184,9 @@ SpeedTab:CreateParagraph({
 })
 SpeedTab:CreateSection("Настройки")
 
-SpeedTab:CreateSlider({
-    Name = "Boost Speed", Range = {0, 50}, Increment = 1,
-    CurrentValue = 50,
+Elements.Speed = SpeedTab:CreateSlider({
+    Name = "Boost Speed", Range = {0, 500}, Increment = 5,
+    CurrentValue = VehicleSpeed,
     Callback = function(v) VehicleSpeed = v end,
 })
 SpeedTab:CreateButton({
@@ -109,81 +205,183 @@ SpeedTab:CreateButton({
 local AWTab = Window:CreateTab("Auto Wheelie", 4483362458)
 AWTab:CreateSection("Управление")
 
-AWTab:CreateToggle({
-    Name = "Включить автовилли", CurrentValue = true,
+Elements.Enabled = AWTab:CreateToggle({
+    Name = "Включить автовилли", CurrentValue = AW.Enabled,
     Callback = function(v) AW.Enabled = v end,
 })
-AWTab:CreateToggle({
-    Name = "Круиз (W держится)", CurrentValue = false,
+Elements.Cruise = AWTab:CreateToggle({
+    Name = "Круиз (W держится)", CurrentValue = AW.Cruise,
     Callback = function(v) AW.Cruise = v end,
 })
-AWTab:CreateSlider({
+Elements.Target = AWTab:CreateSlider({
     Name = "Целевой угол", Range = {10, 120}, Increment = 1,
-    CurrentValue = 75, Callback = function(v) AW.TARGET = v end,
+    CurrentValue = AW.TARGET, Callback = function(v) AW.TARGET = v end,
 })
-AWTab:CreateSlider({
+Elements.Over = AWTab:CreateSlider({
     Name = "Сброс (S) при угле", Range = {30, 160}, Increment = 1,
-    CurrentValue = 77, Callback = function(v) AW.OVER = v end,
+    CurrentValue = AW.OVER, Callback = function(v) AW.OVER = v end,
 })
 
 AWTab:CreateSection("Подрыв")
-AWTab:CreateSlider({
+Elements.Kick = AWTab:CreateSlider({
     Name = "Начальный подрыв", Range = {0, 1.5}, Increment = 0.05,
-    CurrentValue = 0.3, Callback = function(v) AW.KICK_TIME = v end,
+    CurrentValue = AW.KICK_TIME, Callback = function(v) AW.KICK_TIME = v end,
 })
 
 AWTab:CreateSection("Перевал (P)")
-AWTab:CreateToggle({
-    Name = "Зажимать P при перевале",
-    CurrentValue = true,
+Elements.PEnabled = AWTab:CreateToggle({
+    Name = "Зажимать P при перевале", CurrentValue = AW.PEnabled,
     Callback = function(v)
         AW.PEnabled = v
         Rayfield:Notify({Title="Перевал P", Content=v and "ВКЛ" or "ВЫКЛ", Duration=2})
     end,
 })
-AWTab:CreateSlider({
+Elements.PFrom = AWTab:CreateSlider({
     Name = "P: от угла", Range = {20, 180}, Increment = 1,
-    CurrentValue = 82, Callback = function(v) AW.PFrom = v end,
+    CurrentValue = AW.PFrom, Callback = function(v) AW.PFrom = v end,
 })
-AWTab:CreateSlider({
+Elements.PTo = AWTab:CreateSlider({
     Name = "P: до угла", Range = {20, 180}, Increment = 1,
-    CurrentValue = 180, Callback = function(v) AW.PTo = v end,
+    CurrentValue = AW.PTo, Callback = function(v) AW.PTo = v end,
 })
 
 -- ==================== ТЮНИНГ AW ====================
 local TuneTab = Window:CreateTab("Тюнинг AW", 4483362458)
 TuneTab:CreateSection("Газ")
 
-TuneTab:CreateSlider({
+Elements.FallSpd = TuneTab:CreateSlider({
     Name = "Порог падения", Range = {-20, 0}, Increment = 1,
-    CurrentValue = -3, Callback = function(v) AW.FALL_SPD = v end,
+    CurrentValue = AW.FALL_SPD, Callback = function(v) AW.FALL_SPD = v end,
 })
-TuneTab:CreateSlider({
+Elements.RiseSpd = TuneTab:CreateSlider({
     Name = "Порог роста", Range = {0, 30}, Increment = 1,
-    CurrentValue = 4, Callback = function(v) AW.RISE_SPD = v end,
+    CurrentValue = AW.RISE_SPD, Callback = function(v) AW.RISE_SPD = v end,
 })
 TuneTab:CreateSection("Импульсы")
-TuneTab:CreateSlider({
+Elements.PulseMin = TuneTab:CreateSlider({
     Name = "Мин. импульс", Range = {0.02, 0.30}, Increment = 0.01,
-    CurrentValue = 0.06, Callback = function(v) AW.PULSE_MIN = v end,
+    CurrentValue = AW.PULSE_MIN, Callback = function(v) AW.PULSE_MIN = v end,
 })
-TuneTab:CreateSlider({
+Elements.PulseMax = TuneTab:CreateSlider({
     Name = "Макс. импульс", Range = {0.05, 0.60}, Increment = 0.01,
-    CurrentValue = 0.20, Callback = function(v) AW.PULSE_MAX = v end,
+    CurrentValue = AW.PULSE_MAX, Callback = function(v) AW.PULSE_MAX = v end,
 })
 TuneTab:CreateSection("Сглаживание")
-TuneTab:CreateSlider({
+Elements.Smooth = TuneTab:CreateSlider({
     Name = "Сглаживание угла", Range = {0.1, 1.0}, Increment = 0.05,
-    CurrentValue = 0.5, Callback = function(v) AW.SMOOTH = v end,
+    CurrentValue = AW.SMOOTH, Callback = function(v) AW.SMOOTH = v end,
+})
+
+-- ==================== КОНФИГИ ====================
+local CfgTab = Window:CreateTab("Конфиги", 4483362458)
+
+CfgTab:CreateSection("Сохранить")
+
+local cfgNameInput = "default"
+CfgTab:CreateInput({
+    Name = "Имя конфига",
+    CurrentValue = "default",
+    PlaceholderText = "myconfig",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(v) cfgNameInput = v end,
+})
+
+CfgTab:CreateButton({
+    Name = "💾 Сохранить текущий",
+    Callback = function()
+        local ok, err = saveConfig(cfgNameInput)
+        if ok then
+            Rayfield:Notify({
+                Title = "Конфиг",
+                Content = "Сохранено: " .. cfgNameInput,
+                Duration = 3,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Ошибка",
+                Content = err or "Не удалось сохранить",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+CfgTab:CreateSection("Загрузить")
+
+local cfgDropdown = CfgTab:CreateDropdown({
+    Name = "Выбери конфиг",
+    Options = listConfigs(),
+    CurrentOption = {},
+    MultipleOptions = false,
+    Flag = "CfgSelect",
+    Callback = function(opt)
+        if type(opt) == "table" then cfgNameInput = opt[1] or cfgNameInput
+        else cfgNameInput = opt end
+    end,
+})
+
+CfgTab:CreateButton({
+    Name = "📂 Загрузить выбранный",
+    Callback = function()
+        if not cfgNameInput or cfgNameInput == "" then
+            Rayfield:Notify({Title="Ошибка", Content="Не выбран конфиг", Duration=3})
+            return
+        end
+        local ok, err = loadConfig(cfgNameInput)
+        if ok then
+            Rayfield:Notify({
+                Title = "Конфиг",
+                Content = "Загружено: " .. cfgNameInput,
+                Duration = 3,
+            })
+        else
+            Rayfield:Notify({
+                Title = "Ошибка",
+                Content = err or "Не удалось загрузить",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+CfgTab:CreateButton({
+    Name = "🔄 Обновить список",
+    Callback = function()
+        cfgDropdown:Refresh(listConfigs())
+        Rayfield:Notify({Title="Конфиги", Content="Список обновлён", Duration=2})
+    end,
+})
+
+CfgTab:CreateSection("Удалить")
+
+CfgTab:CreateButton({
+    Name = "🗑 Удалить выбранный",
+    Callback = function()
+        if not cfgNameInput or cfgNameInput == "" then return end
+        if deleteConfig(cfgNameInput) then
+            cfgDropdown:Refresh(listConfigs())
+            Rayfield:Notify({Title="Конфиг", Content="Удалено: " .. cfgNameInput, Duration=3})
+        else
+            Rayfield:Notify({Title="Ошибка", Content="Файл не найден", Duration=3})
+        end
+    end,
+})
+
+CfgTab:CreateSection("Автозагрузка")
+CfgTab:CreateParagraph({
+    Title = "Как пользоваться",
+    Content = "Введи имя → Сохранить. Чтобы загрузить — выбери в списке → Загрузить. Файлы лежат в workspace/" .. CONFIG_FOLDER
 })
 
 -- ==================== ПРОЧЕЕ ====================
 local MiscTab = Window:CreateTab("Прочее", 4483362458)
 MiscTab:CreateSection("Отладка")
-MiscTab:CreateToggle({
-    Name = "Печатать логи", CurrentValue = false,
+
+Elements.Logs = MiscTab:CreateToggle({
+    Name = "Печатать логи", CurrentValue = AW.LOGS,
     Callback = function(v) AW.LOGS = v end,
 })
+
 MiscTab:CreateSection("Действия")
 MiscTab:CreateButton({
     Name = "Сбросить настройки AW",
@@ -193,6 +391,7 @@ MiscTab:CreateButton({
         AW.SMOOTH = 0.5; AW.OVER = 77; AW.KICK_TIME = 0.3
         AW.Cruise = false; AW.PEnabled = true
         AW.PFrom = 82; AW.PTo = 180
+        applyConfig({ AW = AW, VehicleSpeed = 50, BoostKeybind = "LeftAlt" })
         Rayfield:Notify({Title="Auto Wheelie", Content="Настройки сброшены", Duration=3})
     end,
 })
@@ -261,7 +460,6 @@ local function sendS(d)
     VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game)
 end
 
--- P — с удержанием
 local pIsDown = false
 local function setP(down)
     if down == pIsDown then return end
@@ -276,7 +474,6 @@ local kickTimer, kickArmed = 0, false
 local cruiseRelease = 0
 
 RunService.Heartbeat:Connect(function(dt)
-    -- Ctrl
     if ctrl and not prevCtrl then
         kickArmed = true; kickTimer = 0; smoothPitch = 0
     end
@@ -296,7 +493,6 @@ RunService.Heartbeat:Connect(function(dt)
     local speed = (pitch - prevPitch) / math.max(dt, 0.001)
     prevPitch = pitch
 
-    -- P — держим в диапазоне
     if AW.PEnabled then
         local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
         setP(pitch >= lo and pitch <= hi)
@@ -304,7 +500,6 @@ RunService.Heartbeat:Connect(function(dt)
         setP(false)
     end
 
-    -- Аварийный сброс
     if pitch >= AW.OVER then
         sendW(false); sendS(true)
         wTimer, wLockout, kickTimer, kickArmed = 0, 0.15, 0, false
@@ -314,7 +509,6 @@ RunService.Heartbeat:Connect(function(dt)
 
     sendS(false)
 
-    -- ПОДРЫВ
     if kickArmed then
         if kickTimer <= 0 then kickTimer = AW.KICK_TIME end
         kickTimer = kickTimer - dt
@@ -326,7 +520,6 @@ RunService.Heartbeat:Connect(function(dt)
         return
     end
 
-    -- КРУИЗ
     if AW.Cruise then
         if cruiseRelease > 0 then
             cruiseRelease = cruiseRelease - dt
@@ -338,14 +531,9 @@ RunService.Heartbeat:Connect(function(dt)
         else
             sendW(true)
         end
-        if AW.LOGS and tick() - lastLog > 0.4 then
-            lastLog = tick()
-            P(string.format("[CRUISE] pitch=%.1f°  W=%s", pitch, tostring(wSent)))
-        end
         return
     end
 
-    -- ИМПУЛЬСЫ
     if wTimer > 0 then wTimer = wTimer - dt end
     if wLockout > 0 then wLockout = wLockout - dt end
 
@@ -361,18 +549,11 @@ RunService.Heartbeat:Connect(function(dt)
             wLockout = 0.25
         end
     end
-
-    if AW.LOGS and tick() - lastLog > 0.4 then
-        lastLog = tick()
-        P(string.format("[IMPULSE] pitch=%.1f°  W=%s", pitch, tostring(wSent)))
-    end
 end)
 
 -- ==================== ЗАГРУЗКА ====================
-Rayfield:LoadConfiguration()
-
 Rayfield:Notify({
     Title = "Sashamotyan Hub",
-    Content = "Загружено. Boost: Alt | Меню: K",
+    Content = "Загружено. Boost: Alt | Меню: K | Конфиги → вкладка",
     Duration = 5,
 })
