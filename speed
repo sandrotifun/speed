@@ -1,4 +1,4 @@
---[[ Sashamotyan Hub — Speed Hack + Auto Wheelie ]]
+--[[ Sashamotyan Hub — Speed Hack + Auto Wheelie + Перевал P ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -36,7 +36,7 @@ local AW = {
     LOGS      = false,
     KICK_TIME = 0.55,
     Cruise    = false,
-    -- Нажатие P при перевале
+    -- Перевал (P)
     PEnabled  = false,
     PFrom     = 60,
     PTo       = 120,
@@ -46,7 +46,7 @@ local AW = {
 
 local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
 
--- ==================== SPEED HACK ФУНКЦИИ (объявлены ДО окна) ====================
+-- ==================== SPEED HACK ФУНКЦИИ ====================
 local function GetVehicle()
     local Seat = Humanoid.SeatPart
     if Seat and Seat:IsA("VehicleSeat") then
@@ -168,6 +168,33 @@ AWTab:CreateSlider({
     Callback = function(v) AW.KICK_TIME = v end,
 })
 
+AWTab:CreateSection("Перевал (P)")
+
+AWTab:CreateToggle({
+    Name = "Нажимать P при перевале",
+    CurrentValue = false,
+    Callback = function(v)
+        AW.PEnabled = v
+        Rayfield:Notify({Title="Перевал P", Content=v and "ВКЛ" or "ВЫКЛ", Duration=2})
+    end,
+})
+
+AWTab:CreateSlider({
+    Name = "P: от угла",
+    Range = {20, 180},
+    Increment = 1,
+    CurrentValue = 60,
+    Callback = function(v) AW.PFrom = v end,
+})
+
+AWTab:CreateSlider({
+    Name = "P: до угла",
+    Range = {20, 180},
+    Increment = 1,
+    CurrentValue = 120,
+    Callback = function(v) AW.PTo = v end,
+})
+
 -- ==================== ВКЛАДКА: ТЮНИНГ AW ====================
 local TuneTab = Window:CreateTab("Тюнинг AW", 4483362458)
 
@@ -235,6 +262,9 @@ MiscTab:CreateButton({
         AW.OVER      = 45
         AW.KICK_TIME = 0.55
         AW.Cruise    = false
+        AW.PEnabled  = false
+        AW.PFrom     = 60
+        AW.PTo       = 120
         Rayfield:Notify({Title="Auto Wheelie", Content="Настройки сброшены", Duration=3})
     end,
 })
@@ -308,6 +338,19 @@ local function sendS(d)
     VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game)
 end
 
+-- Нажатие P
+local pLastPress = 0
+local function pressP()
+    if tick() - pLastPress < AW.PCooldown then return end
+    pLastPress = tick()
+    task.spawn(function()
+        VIM:SendKeyEvent(true,  AW.PKey, false, game)
+        task.wait(0.05)
+        VIM:SendKeyEvent(false, AW.PKey, false, game)
+    end)
+    P("P pressed")
+end
+
 local prevPitch = 0
 local wTimer, wLockout, lastLog = 0, 0, 0
 local kickTimer, kickArmed = 0, false
@@ -343,10 +386,23 @@ RunService.Heartbeat:Connect(function(dt)
         sendW(false); sendS(true)
         wTimer, wLockout, kickTimer, kickArmed = 0, 0.15, 0, false
         cruiseRelease = 0.25
+        -- P при перевале тоже проверяем
+        if AW.PEnabled then
+            local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
+            if pitch >= lo and pitch <= hi then pressP() end
+        end
         return
     end
 
     sendS(false)
+
+    -- Нажатие P при перевале
+    if AW.PEnabled then
+        local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
+        if pitch >= lo and pitch <= hi then
+            pressP()
+        end
+    end
 
     -- ==== ПОДРЫВ ====
     if kickArmed then
