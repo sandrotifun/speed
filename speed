@@ -1,4 +1,4 @@
---[[ Sashamotyan Hub — Speed Hack + Auto Wheelie + Перевал P ]]
+--[[ Sashamotyan Hub — Speed Hack + Auto Wheelie + Перевал P (hold) ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -17,13 +17,10 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ==================== НАСТРОЙКИ ====================
-
--- Speed hack
 local VehicleSpeed   = 50
 local BoostKeybind   = Enum.KeyCode.LeftAlt
 local ListeningForBind = false
 
--- Auto Wheelie
 local AW = {
     Enabled   = true,
     TARGET    = 32,
@@ -36,12 +33,11 @@ local AW = {
     LOGS      = false,
     KICK_TIME = 0.55,
     Cruise    = false,
-    -- Перевал (P)
+    -- Перевал P
     PEnabled  = false,
     PFrom     = 60,
     PTo       = 120,
     PKey      = Enum.KeyCode.P,
-    PCooldown = 1.0,
 }
 
 local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
@@ -49,10 +45,7 @@ local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
 -- ==================== SPEED HACK ФУНКЦИИ ====================
 local function GetVehicle()
     local Seat = Humanoid.SeatPart
-    if Seat and Seat:IsA("VehicleSeat") then
-        return Seat.Parent
-    end
-    return nil
+    if Seat and Seat:IsA("VehicleSeat") then return Seat.Parent end
 end
 
 local function BoostForward()
@@ -68,11 +61,7 @@ local function BoostForward()
             Base.AssemblyLinearVelocity = Base.CFrame.LookVector * VehicleSpeed * 5
         end
     else
-        Rayfield:Notify({
-            Title = "Ошибка",
-            Content = "Ты не в машине!",
-            Duration = 3,
-        })
+        Rayfield:Notify({Title="Ошибка", Content="Ты не в машине!", Duration=3})
     end
 end
 
@@ -90,188 +79,126 @@ local Window = Rayfield:CreateWindow({
     },
 })
 
--- ==================== ВКЛАДКА: SPEED HACK ====================
+-- ==================== SPEED HACK ====================
 local SpeedTab = Window:CreateTab("Speed Hack", 4483345998)
 SpeedTab:CreateSection("Инструкция")
 SpeedTab:CreateParagraph({
     Title = "Как пользоваться",
     Content = "Сядь в машину. Настрой скорость и жми ALT (или свою клавишу)."
 })
-
 SpeedTab:CreateSection("Настройки")
 
 SpeedTab:CreateSlider({
-    Name = "Boost Speed",
-    Range = {0, 500},
-    Increment = 5,
+    Name = "Boost Speed", Range = {0, 500}, Increment = 5,
     CurrentValue = 50,
     Callback = function(v) VehicleSpeed = v end,
 })
-
 SpeedTab:CreateButton({
     Name = "Boost Forward (сразу)",
     Callback = function() BoostForward() end,
 })
-
 SpeedTab:CreateButton({
     Name = "Set Boost Bind",
     Callback = function()
         ListeningForBind = true
-        Rayfield:Notify({
-            Title = "Bind",
-            Content = "Нажми любую клавишу для бинда...",
-            Duration = 3,
-        })
+        Rayfield:Notify({Title="Bind", Content="Нажми любую клавишу...", Duration=3})
     end,
 })
 
--- ==================== ВКЛАДКА: AUTO WHEELIE ====================
+-- ==================== AUTO WHEELIE ====================
 local AWTab = Window:CreateTab("Auto Wheelie", 4483362458)
-
 AWTab:CreateSection("Управление")
 
 AWTab:CreateToggle({
-    Name = "Включить автовилли",
-    CurrentValue = true,
+    Name = "Включить автовилли", CurrentValue = true,
     Callback = function(v) AW.Enabled = v end,
 })
-
 AWTab:CreateToggle({
-    Name = "Круиз (W держится)",
-    CurrentValue = false,
+    Name = "Круиз (W держится)", CurrentValue = false,
     Callback = function(v) AW.Cruise = v end,
 })
-
 AWTab:CreateSlider({
-    Name = "Целевой угол",
-    Range = {10, 120},
-    Increment = 1,
-    CurrentValue = 32,
-    Callback = function(v) AW.TARGET = v end,
+    Name = "Целевой угол", Range = {10, 120}, Increment = 1,
+    CurrentValue = 32, Callback = function(v) AW.TARGET = v end,
 })
-
 AWTab:CreateSlider({
-    Name = "Сброс (S) при угле",
-    Range = {30, 160},
-    Increment = 1,
-    CurrentValue = 45,
-    Callback = function(v) AW.OVER = v end,
+    Name = "Сброс (S) при угле", Range = {30, 160}, Increment = 1,
+    CurrentValue = 45, Callback = function(v) AW.OVER = v end,
 })
 
 AWTab:CreateSection("Подрыв")
-
 AWTab:CreateSlider({
-    Name = "Начальный подрыв",
-    Range = {0, 1.5},
-    Increment = 0.05,
-    CurrentValue = 0.55,
-    Callback = function(v) AW.KICK_TIME = v end,
+    Name = "Начальный подрыв", Range = {0, 1.5}, Increment = 0.05,
+    CurrentValue = 0.55, Callback = function(v) AW.KICK_TIME = v end,
 })
 
 AWTab:CreateSection("Перевал (P)")
-
 AWTab:CreateToggle({
-    Name = "Нажимать P при перевале",
+    Name = "Зажимать P при перевале",
     CurrentValue = false,
     Callback = function(v)
         AW.PEnabled = v
         Rayfield:Notify({Title="Перевал P", Content=v and "ВКЛ" or "ВЫКЛ", Duration=2})
     end,
 })
-
 AWTab:CreateSlider({
-    Name = "P: от угла",
-    Range = {20, 180},
-    Increment = 1,
-    CurrentValue = 60,
-    Callback = function(v) AW.PFrom = v end,
+    Name = "P: от угла", Range = {20, 180}, Increment = 1,
+    CurrentValue = 60, Callback = function(v) AW.PFrom = v end,
+})
+AWTab:CreateSlider({
+    Name = "P: до угла", Range = {20, 180}, Increment = 1,
+    CurrentValue = 120, Callback = function(v) AW.PTo = v end,
 })
 
-AWTab:CreateSlider({
-    Name = "P: до угла",
-    Range = {20, 180},
-    Increment = 1,
-    CurrentValue = 120,
-    Callback = function(v) AW.PTo = v end,
-})
-
--- ==================== ВКЛАДКА: ТЮНИНГ AW ====================
+-- ==================== ТЮНИНГ AW ====================
 local TuneTab = Window:CreateTab("Тюнинг AW", 4483362458)
-
 TuneTab:CreateSection("Газ")
-TuneTab:CreateSlider({
-    Name = "Порог падения",
-    Range = {-20, 0},
-    Increment = 1,
-    CurrentValue = -3,
-    Callback = function(v) AW.FALL_SPD = v end,
-})
-TuneTab:CreateSlider({
-    Name = "Порог роста",
-    Range = {0, 30},
-    Increment = 1,
-    CurrentValue = 4,
-    Callback = function(v) AW.RISE_SPD = v end,
-})
 
+TuneTab:CreateSlider({
+    Name = "Порог падения", Range = {-20, 0}, Increment = 1,
+    CurrentValue = -3, Callback = function(v) AW.FALL_SPD = v end,
+})
+TuneTab:CreateSlider({
+    Name = "Порог роста", Range = {0, 30}, Increment = 1,
+    CurrentValue = 4, Callback = function(v) AW.RISE_SPD = v end,
+})
 TuneTab:CreateSection("Импульсы")
 TuneTab:CreateSlider({
-    Name = "Мин. импульс",
-    Range = {0.02, 0.30},
-    Increment = 0.01,
-    CurrentValue = 0.06,
-    Callback = function(v) AW.PULSE_MIN = v end,
+    Name = "Мин. импульс", Range = {0.02, 0.30}, Increment = 0.01,
+    CurrentValue = 0.06, Callback = function(v) AW.PULSE_MIN = v end,
 })
 TuneTab:CreateSlider({
-    Name = "Макс. импульс",
-    Range = {0.05, 0.60},
-    Increment = 0.01,
-    CurrentValue = 0.20,
-    Callback = function(v) AW.PULSE_MAX = v end,
+    Name = "Макс. импульс", Range = {0.05, 0.60}, Increment = 0.01,
+    CurrentValue = 0.20, Callback = function(v) AW.PULSE_MAX = v end,
 })
-
 TuneTab:CreateSection("Сглаживание")
 TuneTab:CreateSlider({
-    Name = "Сглаживание угла",
-    Range = {0.1, 1.0},
-    Increment = 0.05,
-    CurrentValue = 0.5,
-    Callback = function(v) AW.SMOOTH = v end,
+    Name = "Сглаживание угла", Range = {0.1, 1.0}, Increment = 0.05,
+    CurrentValue = 0.5, Callback = function(v) AW.SMOOTH = v end,
 })
 
--- ==================== ВКЛАДКА: ПРОЧЕЕ ====================
+-- ==================== ПРОЧЕЕ ====================
 local MiscTab = Window:CreateTab("Прочее", 4483362458)
-
 MiscTab:CreateSection("Отладка")
 MiscTab:CreateToggle({
-    Name = "Печатать логи",
-    CurrentValue = false,
+    Name = "Печатать логи", CurrentValue = false,
     Callback = function(v) AW.LOGS = v end,
 })
-
 MiscTab:CreateSection("Действия")
 MiscTab:CreateButton({
     Name = "Сбросить настройки AW",
     Callback = function()
-        AW.TARGET    = 32
-        AW.FALL_SPD  = -3
-        AW.RISE_SPD  = 4
-        AW.PULSE_MIN = 0.06
-        AW.PULSE_MAX = 0.20
-        AW.SMOOTH    = 0.5
-        AW.OVER      = 45
-        AW.KICK_TIME = 0.55
-        AW.Cruise    = false
-        AW.PEnabled  = false
-        AW.PFrom     = 60
-        AW.PTo       = 120
+        AW.TARGET = 32; AW.FALL_SPD = -3; AW.RISE_SPD = 4
+        AW.PULSE_MIN = 0.06; AW.PULSE_MAX = 0.20
+        AW.SMOOTH = 0.5; AW.OVER = 45; AW.KICK_TIME = 0.55
+        AW.Cruise = false; AW.PEnabled = false
+        AW.PFrom = 60; AW.PTo = 120
         Rayfield:Notify({Title="Auto Wheelie", Content="Настройки сброшены", Duration=3})
     end,
 })
 
 -- ==================== ВВОД: БИНД SPEED ====================
 UIS.InputBegan:Connect(function(input, gameProcessed)
-
     if ListeningForBind then
         if input.UserInputType == Enum.UserInputType.Keyboard then
             BoostKeybind = input.KeyCode
@@ -284,15 +211,11 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
         end
         return
     end
-
     if UIS:GetFocusedTextBox() then return end
-
-    if input.KeyCode == BoostKeybind then
-        BoostForward()
-    end
+    if input.KeyCode == BoostKeybind then BoostForward() end
 end)
 
--- ==================== AUTO WHEELIE ЛОГИКА ====================
+-- ==================== AW ЛОГИКА ====================
 local ctrl, prevCtrl = false, false
 UIS.InputBegan:Connect(function(i)
     if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then
@@ -338,17 +261,13 @@ local function sendS(d)
     VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game)
 end
 
--- Нажатие P
-local pLastPress = 0
-local function pressP()
-    if tick() - pLastPress < AW.PCooldown then return end
-    pLastPress = tick()
-    task.spawn(function()
-        VIM:SendKeyEvent(true,  AW.PKey, false, game)
-        task.wait(0.05)
-        VIM:SendKeyEvent(false, AW.PKey, false, game)
-    end)
-    P("P pressed")
+-- P — с удержанием
+local pIsDown = false
+local function setP(down)
+    if down == pIsDown then return end
+    pIsDown = down
+    VIM:SendKeyEvent(down, AW.PKey, false, game)
+    P("P "..(down and "DOWN" or "UP"))
 end
 
 local prevPitch = 0
@@ -357,54 +276,45 @@ local kickTimer, kickArmed = 0, false
 local cruiseRelease = 0
 
 RunService.Heartbeat:Connect(function(dt)
-    -- Нажатие Ctrl
+    -- Ctrl
     if ctrl and not prevCtrl then
-        kickArmed = true
-        kickTimer = 0
-        smoothPitch = 0
+        kickArmed = true; kickTimer = 0; smoothPitch = 0
     end
     if not ctrl then
-        kickArmed = false
-        kickTimer = 0
-        cruiseRelease = 0
+        kickArmed = false; kickTimer = 0; cruiseRelease = 0
     end
     prevCtrl = ctrl
 
     if not AW.Enabled or not ctrl or not isInVehicle() then
-        sendW(false); sendS(false)
+        sendW(false); sendS(false); setP(false)
         wTimer, wLockout = 0, 0
         return
     end
 
     local pitch = getPitch()
-    if not pitch then sendW(false); sendS(false) return end
+    if not pitch then sendW(false); sendS(false); setP(false) return end
     local speed = (pitch - prevPitch) / math.max(dt, 0.001)
     prevPitch = pitch
+
+    -- P — держим в диапазоне
+    if AW.PEnabled then
+        local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
+        setP(pitch >= lo and pitch <= hi)
+    else
+        setP(false)
+    end
 
     -- Аварийный сброс
     if pitch >= AW.OVER then
         sendW(false); sendS(true)
         wTimer, wLockout, kickTimer, kickArmed = 0, 0.15, 0, false
         cruiseRelease = 0.25
-        -- P при перевале тоже проверяем
-        if AW.PEnabled then
-            local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
-            if pitch >= lo and pitch <= hi then pressP() end
-        end
         return
     end
 
     sendS(false)
 
-    -- Нажатие P при перевале
-    if AW.PEnabled then
-        local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
-        if pitch >= lo and pitch <= hi then
-            pressP()
-        end
-    end
-
-    -- ==== ПОДРЫВ ====
+    -- ПОДРЫВ
     if kickArmed then
         if kickTimer <= 0 then kickTimer = AW.KICK_TIME end
         kickTimer = kickTimer - dt
@@ -416,7 +326,7 @@ RunService.Heartbeat:Connect(function(dt)
         return
     end
 
-    -- ==== КРУИЗ ====
+    -- КРУИЗ
     if AW.Cruise then
         if cruiseRelease > 0 then
             cruiseRelease = cruiseRelease - dt
@@ -424,19 +334,18 @@ RunService.Heartbeat:Connect(function(dt)
             return
         end
         if pitch > AW.TARGET then
-            sendW(false)
-            cruiseRelease = 0.08
+            sendW(false); cruiseRelease = 0.08
         else
             sendW(true)
         end
         if AW.LOGS and tick() - lastLog > 0.4 then
             lastLog = tick()
-            P(string.format("[CRUISE] pitch=%.1f°  speed=%.0f  W=%s", pitch, speed, tostring(wSent)))
+            P(string.format("[CRUISE] pitch=%.1f°  W=%s", pitch, tostring(wSent)))
         end
         return
     end
 
-    -- ==== ИМПУЛЬСЫ ====
+    -- ИМПУЛЬСЫ
     if wTimer > 0 then wTimer = wTimer - dt end
     if wLockout > 0 then wLockout = wLockout - dt end
 
@@ -455,7 +364,7 @@ RunService.Heartbeat:Connect(function(dt)
 
     if AW.LOGS and tick() - lastLog > 0.4 then
         lastLog = tick()
-        P(string.format("[IMPULSE] pitch=%.1f°  speed=%.0f  W=%s", pitch, speed, tostring(wSent)))
+        P(string.format("[IMPULSE] pitch=%.1f°  W=%s", pitch, tostring(wSent)))
     end
 end)
 
