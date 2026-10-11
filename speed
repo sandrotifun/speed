@@ -186,7 +186,7 @@ AWTab:CreateToggle({
     Callback = function(v) AW.Enabled = v end,
 })
 AWTab:CreateToggle({
-    Name = "Круиз (W держится)", CurrentValue = true,
+    Name = "Круиз (W держится)", CurrentValue = false,
     Callback = function(v) AW.Cruise = v end,
 })
 AWTab:CreateSlider({
