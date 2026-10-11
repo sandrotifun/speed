@@ -93,8 +93,8 @@ SpeedTab:CreateSection("Настройки")
 
 SpeedTab:CreateSlider({
     Name = "Boost Speed",
-    Range = {0, 500},
-    Increment = 5,
+    Range = {0, 100},
+    Increment = 1,
     CurrentValue = 50,
     Callback = function(v) VehicleSpeed = v end,
 })
