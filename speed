@@ -1,11 +1,12 @@
---[[ Sashamotyan Hub — Speed Hack + Auto Wheelie + P + Configs ]]
+--[[ Sashamotyan Hub — Fluent v10 ]]
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Players    = game:GetService("Players")
 local UIS        = game:GetService("UserInputService")
 local VIM        = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
+local Lighting   = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local Character   = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -16,134 +17,457 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     Humanoid  = char:WaitForChild("Humanoid")
 end)
 
--- ==================== НАСТРОЙКИ ====================
-local VehicleSpeed   = 50
-local BoostKeybind   = Enum.KeyCode.LeftAlt
-local ListeningForBind = false
-
-local AW = {
-    Enabled   = true,
-    TARGET    = 75,
-    FALL_SPD  = -3,
-    RISE_SPD  = 4,
-    PULSE_MIN = 0.06,
-    PULSE_MAX = 0.20,
-    SMOOTH    = 0.5,
-    OVER      = 77,
-    LOGS      = false,
-    KICK_TIME = 0.3,
-    Cruise    = false,
-    PEnabled  = true,
-    PFrom     = 82,
-    PTo       = 180,
-    PKey      = Enum.KeyCode.P,
+-- ==================== ЦВЕТА ТЕМ ====================
+local ThemeColors = {
+    Amethyst = { Accent=Color3.fromRGB(160,100,255), Dialog=Color3.fromRGB(45,33,70), Outline=Color3.fromRGB(90,70,130), Text=Color3.fromRGB(240,240,245), SubText=Color3.fromRGB(170,160,190), Button=Color3.fromRGB(55,42,82), Button2=Color3.fromRGB(38,28,58), Inline=Color3.fromRGB(45,33,70), Background=Color3.fromRGB(30,22,48) },
+    Dark     = { Accent=Color3.fromRGB(10,132,255),  Dialog=Color3.fromRGB(30,30,32), Outline=Color3.fromRGB(60,60,62),  Text=Color3.fromRGB(240,240,240), SubText=Color3.fromRGB(180,180,180), Button=Color3.fromRGB(38,38,40), Button2=Color3.fromRGB(26,26,28), Inline=Color3.fromRGB(30,30,32), Background=Color3.fromRGB(20,20,22) },
+    Darker   = { Accent=Color3.fromRGB(10,132,255),  Dialog=Color3.fromRGB(20,20,22), Outline=Color3.fromRGB(45,45,48),  Text=Color3.fromRGB(240,240,240), SubText=Color3.fromRGB(170,170,170), Button=Color3.fromRGB(28,28,30), Button2=Color3.fromRGB(16,16,18), Inline=Color3.fromRGB(20,20,22), Background=Color3.fromRGB(12,12,14) },
+    Light    = { Accent=Color3.fromRGB(10,132,255),  Dialog=Color3.fromRGB(245,245,248), Outline=Color3.fromRGB(210,210,215), Text=Color3.fromRGB(30,30,35), SubText=Color3.fromRGB(110,110,120), Button=Color3.fromRGB(230,230,235), Button2=Color3.fromRGB(220,220,228), Inline=Color3.fromRGB(245,245,248), Background=Color3.fromRGB(255,255,255) },
+    Aqua     = { Accent=Color3.fromRGB(0,180,200),   Dialog=Color3.fromRGB(28,45,50), Outline=Color3.fromRGB(60,90,100), Text=Color3.fromRGB(230,245,245), SubText=Color3.fromRGB(150,180,185), Button=Color3.fromRGB(36,55,60), Button2=Color3.fromRGB(24,40,45), Inline=Color3.fromRGB(28,45,50), Background=Color3.fromRGB(18,30,34) },
+    Rose     = { Accent=Color3.fromRGB(240,120,170), Dialog=Color3.fromRGB(55,30,45), Outline=Color3.fromRGB(105,60,85), Text=Color3.fromRGB(245,240,245), SubText=Color3.fromRGB(190,160,175), Button=Color3.fromRGB(66,38,55), Button2=Color3.fromRGB(46,26,38), Inline=Color3.fromRGB(55,30,45), Background=Color3.fromRGB(36,20,30) },
+    Mint     = { Accent=Color3.fromRGB(100,220,160), Dialog=Color3.fromRGB(30,55,45), Outline=Color3.fromRGB(60,105,85), Text=Color3.fromRGB(235,245,240), SubText=Color3.fromRGB(160,190,175), Button=Color3.fromRGB(38,68,56), Button2=Color3.fromRGB(26,48,38), Inline=Color3.fromRGB(30,55,45), Background=Color3.fromRGB(20,38,30) },
+    Sea      = { Accent=Color3.fromRGB(80,180,240),  Dialog=Color3.fromRGB(30,45,65), Outline=Color3.fromRGB(60,90,125), Text=Color3.fromRGB(230,240,250), SubText=Color3.fromRGB(160,180,200), Button=Color3.fromRGB(38,55,80), Button2=Color3.fromRGB(26,38,58), Inline=Color3.fromRGB(30,45,65), Background=Color3.fromRGB(20,30,45) },
+    Sunset   = { Accent=Color3.fromRGB(255,150,80),  Dialog=Color3.fromRGB(60,35,30), Outline=Color3.fromRGB(115,70,60), Text=Color3.fromRGB(250,240,235), SubText=Color3.fromRGB(200,175,160), Button=Color3.fromRGB(72,44,38), Button2=Color3.fromRGB(52,30,26), Inline=Color3.fromRGB(60,35,30), Background=Color3.fromRGB(40,24,20) },
+    CottonCandy = { Accent=Color3.fromRGB(255,150,220), Dialog=Color3.fromRGB(55,40,60), Outline=Color3.fromRGB(105,80,115), Text=Color3.fromRGB(245,240,245), SubText=Color3.fromRGB(190,170,195), Button=Color3.fromRGB(68,50,75), Button2=Color3.fromRGB(48,34,55), Inline=Color3.fromRGB(55,40,60), Background=Color3.fromRGB(38,26,42) },
+    Rainbow  = { Accent=Color3.fromRGB(200,120,255), Dialog=Color3.fromRGB(40,30,55), Outline=Color3.fromRGB(90,70,115), Text=Color3.fromRGB(240,240,245), SubText=Color3.fromRGB(170,165,190), Button=Color3.fromRGB(50,38,68), Button2=Color3.fromRGB(34,26,48), Inline=Color3.fromRGB(40,30,55), Background=Color3.fromRGB(26,20,38) },
+    Blood    = { Accent=Color3.fromRGB(220,50,70),   Dialog=Color3.fromRGB(50,25,30), Outline=Color3.fromRGB(100,50,60), Text=Color3.fromRGB(245,235,235), SubText=Color3.fromRGB(190,160,160), Button=Color3.fromRGB(62,32,38), Button2=Color3.fromRGB(44,22,26), Inline=Color3.fromRGB(50,25,30), Background=Color3.fromRGB(32,16,20) },
+    Ocean    = { Accent=Color3.fromRGB(60,140,220),  Dialog=Color3.fromRGB(25,40,60), Outline=Color3.fromRGB(50,80,120), Text=Color3.fromRGB(230,240,250), SubText=Color3.fromRGB(155,175,200), Button=Color3.fromRGB(32,50,72), Button2=Color3.fromRGB(22,34,52), Inline=Color3.fromRGB(25,40,60), Background=Color3.fromRGB(16,26,42) },
+    Pink     = { Accent=Color3.fromRGB(240,130,200), Dialog=Color3.fromRGB(55,35,50), Outline=Color3.fromRGB(105,75,100), Text=Color3.fromRGB(245,240,245), SubText=Color3.fromRGB(195,165,185), Button=Color3.fromRGB(68,44,62), Button2=Color3.fromRGB(48,30,44), Inline=Color3.fromRGB(55,35,50), Background=Color3.fromRGB(38,22,34) },
+    Peach    = { Accent=Color3.fromRGB(255,170,130), Dialog=Color3.fromRGB(60,40,35), Outline=Color3.fromRGB(115,80,70), Text=Color3.fromRGB(250,240,235), SubText=Color3.fromRGB(200,175,165), Button=Color3.fromRGB(72,50,44), Button2=Color3.fromRGB(52,34,30), Inline=Color3.fromRGB(60,40,35), Background=Color3.fromRGB(42,28,24) },
 }
 
-local function P(...) if AW.LOGS then print("[AutoGas]", ...) end end
+local currentTheme = "Amethyst"
 
--- ==================== CONFIG SYSTEM ====================
-local CONFIG_FOLDER = "SashamotyanHub_Configs"
-if not isfolder(CONFIG_FOLDER) then
-    makefolder(CONFIG_FOLDER)
+local function saveThemeToFile(themeName)
+    pcall(function() writefile("SashamotyanHub_Theme.txt", themeName) end)
+end
+local function loadThemeFromFile()
+    local ok, data = pcall(function() return readfile("SashamotyanHub_Theme.txt") end)
+    if ok and data and ThemeColors[data] then currentTheme = data end
+end
+loadThemeFromFile()
+
+pcall(function() Fluent:SetTheme(currentTheme) end)
+
+-- ==================== ВВОД ====================
+local ctrl, prevCtrl = false, false
+local ctrlVirt = false
+
+UIS.InputBegan:Connect(function(i)
+    if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then ctrl = true end
+end)
+UIS.InputEnded:Connect(function(i)
+    if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then ctrl = false end
+end)
+
+local wSent, sSent, aSent, dSent, qSent, eSent = false, false, false, false, false, false
+local pIsDown = false
+local zSent = false
+
+local VehicleSpeed = 50
+local BoostKeybind = Enum.KeyCode.LeftAlt
+local BoostBindState = { value = Enum.KeyCode.LeftAlt }
+
+local AW = {
+    Enabled=true, TARGET=75, FALL_SPD=-3, RISE_SPD=4,
+    PULSE_MIN=0.06, PULSE_MAX=0.20, SMOOTH=0.5, OVER=77,
+    LOGS=false, KICK_TIME=0.3, Cruise=false,
+    PEnabled=true, PFrom=82, PTo=180, PKey=Enum.KeyCode.P,
+    State = "IDLE",
+}
+
+local function safeNum(v, default)
+    local n = tonumber(v)
+    if n == nil then return default or 0 end
+    return n
 end
 
-local Elements = {}   -- ссылки на элементы UI для обновления
+local function roundInt(v) return math.floor(safeNum(v, 0) + 0.5) end
+local function round2(v) return math.floor(safeNum(v, 0) * 100 + 0.5) / 100 end
 
-local function keyByName(name)
-    for _, k in ipairs(Enum.KeyCode:GetEnumItems()) do
-        if k.Name == name then return k end
+local HUD = {
+    Enabled=true, Size=14, X=20, Y=20, ShowSpeed=true,
+    SpeedUnit = "km/h",
+    Accent = nil,
+    BgColor = nil,
+    BgTransparency = 0.15,
+}
+
+local function convertSpeed(studs)
+    local s = safeNum(studs, 0)
+    if HUD.SpeedUnit == "km/h" then
+        return math.floor(s * 0.28 * 3.6 + 0.5)
+    elseif HUD.SpeedUnit == "mph" then
+        return math.floor(s * 0.28 * 2.23694 + 0.5)
+    else
+        return math.floor(s + 0.5)
     end
-    return Enum.KeyCode.LeftAlt
 end
 
-local function buildConfig()
-    return {
-        VehicleSpeed = VehicleSpeed,
-        BoostKeybind = BoostKeybind.Name,
-        AW = {
-            Enabled   = AW.Enabled,
-            TARGET    = AW.TARGET,
-            FALL_SPD  = AW.FALL_SPD,
-            RISE_SPD  = AW.RISE_SPD,
-            PULSE_MIN = AW.PULSE_MIN,
-            PULSE_MAX = AW.PULSE_MAX,
-            SMOOTH    = AW.SMOOTH,
-            OVER      = AW.OVER,
-            KICK_TIME = AW.KICK_TIME,
-            Cruise    = AW.Cruise,
-            PEnabled  = AW.PEnabled,
-            PFrom     = AW.PFrom,
-            PTo       = AW.PTo,
-        }
-    }
+local function speedUnitLabel()
+    if HUD.SpeedUnit == "km/h" then return "km/h"
+    elseif HUD.SpeedUnit == "mph" then return "mph"
+    else return "studs/s" end
 end
 
-local function applyConfig(cfg)
-    if cfg.VehicleSpeed then VehicleSpeed = cfg.VehicleSpeed end
-    if cfg.BoostKeybind then BoostKeybind = keyByName(cfg.BoostKeybind) end
-    if cfg.AW then
-        for k, v in pairs(cfg.AW) do
-            AW[k] = v
+local TrailCfg = {
+    Enabled=false, Lifetime=0.6,
+    Color1=Color3.fromRGB(160, 100, 255),
+    Color2=Color3.fromRGB(255, 100, 255),
+    Transparency=0.2, Brightness=0.6,
+    Mode = "auto",
+    ManualPath = "",
+    OffsetX = 0, OffsetY = 0, OffsetZ = 0,
+    FlatHeight = 0.05,
+    FlatWidth = 1.5,
+    FlatRotation = 0,
+    FlatOffsetX = 0,
+    FlatOffsetZ = 0,
+}
+
+local LightOrig = {
+    Brightness = safeNum(Lighting.Brightness, 1),
+    ClockTime = safeNum(Lighting.ClockTime, 14),
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    EnvironmentDiffuseScale = safeNum(Lighting.EnvironmentDiffuseScale, 0),
+    EnvironmentSpecularScale = safeNum(Lighting.EnvironmentSpecularScale, 0),
+    FogEnd = safeNum(Lighting.FogEnd, 100000),
+    FogStart = safeNum(Lighting.FogStart, 0),
+    FogColor = Lighting.FogColor,
+    GlobalShadows = Lighting.GlobalShadows,
+    ExposureCompensation = safeNum(Lighting.ExposureCompensation, 0),
+}
+
+local TimeLock = { Active = false, Value = LightOrig.ClockTime }
+
+local CC = { Brightness=0, Contrast=0, Saturation=0, TintColor=nil }
+local BL = { Intensity=nil, Size=nil, Threshold=nil }
+local SR = { Intensity=nil, Spread=nil }
+local BR = { Size=nil }
+local AT = { Density=nil, Haze=nil, Glare=nil, Color=nil }
+
+local AutoTune = { Running=false, Duration=30, StartTime=0, Samples={}, Result=nil }
+local ML       = { Running=false, Samples={} }
+local Replay   = {
+    Recording=false, Playing=false,
+    StartTime=0, PlayStartTime=0, Buffer={},
+    LastW=false, LastS=false, LastZ=false,
+    LastA=false, LastD=false,
+    LastCtrl=false, LastQ=false, LastE=false,
+    LastRecTime=0,
+    _name="clip", _playIdx=1,
+    RecordAW=false,
+}
+
+local CONFIG_FOLDER = "SashamotyanHub_Configs"
+local VISUAL_FOLDER = "SashamotyanHub_Visual"
+if not isfolder(CONFIG_FOLDER) then makefolder(CONFIG_FOLDER) end
+if not isfolder(VISUAL_FOLDER) then makefolder(VISUAL_FOLDER) end
+
+-- ==================== HUD ====================
+local hudGui = Instance.new("ScreenGui")
+hudGui.Name = "SashamotyanHUD"
+hudGui.ResetOnSpawn = false
+pcall(function() hudGui.Parent = game:GetService("CoreGui") end)
+if not hudGui.Parent then hudGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+local hudShadow = Instance.new("ImageLabel")
+hudShadow.Name = "Shadow"
+hudShadow.Parent = hudGui
+hudShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+hudShadow.BackgroundTransparency = 1
+hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72)
+hudShadow.Size = UDim2.new(0, 280, 0, 190)
+hudShadow.ZIndex = 0
+hudShadow.Image = "rbxassetid://6014261993"
+hudShadow.ImageColor3 = Color3.new(0, 0, 0)
+hudShadow.ImageTransparency = 0.55
+hudShadow.ScaleType = Enum.ScaleType.Slice
+hudShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+
+local hudFrame = Instance.new("Frame")
+hudFrame.Name = "HudMain"
+hudFrame.Parent = hudGui
+hudFrame.BorderSizePixel = 0
+hudFrame.Size = UDim2.new(0, 240, 0, 145)
+hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y)
+hudFrame.Active = true
+hudFrame.ZIndex = 1
+
+local hudCorner = Instance.new("UICorner")
+hudCorner.CornerRadius = UDim.new(0, 12)
+hudCorner.Parent = hudFrame
+
+local hudStroke = Instance.new("UIStroke")
+hudStroke.Thickness = 1
+hudStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+hudStroke.Parent = hudFrame
+
+local hudAccentBar = Instance.new("Frame")
+hudAccentBar.Parent = hudFrame
+hudAccentBar.BorderSizePixel = 0
+hudAccentBar.Size = UDim2.new(0, 3, 0, 22)
+hudAccentBar.Position = UDim2.new(0, 0, 0, 10)
+hudAccentBar.ZIndex = 2
+local accentBarCorner = Instance.new("UICorner")
+accentBarCorner.CornerRadius = UDim.new(0, 2)
+accentBarCorner.Parent = hudAccentBar
+
+local hudPadding = Instance.new("UIPadding")
+hudPadding.PaddingTop = UDim.new(0, 12)
+hudPadding.PaddingLeft = UDim.new(0, 14)
+hudPadding.PaddingRight = UDim.new(0, 14)
+hudPadding.PaddingBottom = UDim.new(0, 12)
+hudPadding.Parent = hudFrame
+
+local hudTitle = Instance.new("TextLabel")
+hudTitle.Parent = hudFrame
+hudTitle.BackgroundTransparency = 1
+hudTitle.Font = Enum.Font.GothamBold
+hudTitle.TextSize = 15
+hudTitle.TextXAlignment = Enum.TextXAlignment.Left
+hudTitle.Size = UDim2.new(1, -8, 0, 18)
+hudTitle.Position = UDim2.new(0, 8, 0, 0)
+hudTitle.Text = "Sashamotyan Hub"
+hudTitle.ZIndex = 2
+
+local hudSubtitle = Instance.new("TextLabel")
+hudSubtitle.Parent = hudFrame
+hudSubtitle.BackgroundTransparency = 1
+hudSubtitle.Font = Enum.Font.Gotham
+hudSubtitle.TextSize = 11
+hudSubtitle.TextXAlignment = Enum.TextXAlignment.Left
+hudSubtitle.Size = UDim2.new(1, -8, 0, 14)
+hudSubtitle.Position = UDim2.new(0, 8, 0, 18)
+hudSubtitle.Text = "by sashamotyan"
+hudSubtitle.ZIndex = 2
+
+local hudDivider = Instance.new("Frame")
+hudDivider.Parent = hudFrame
+hudDivider.BorderSizePixel = 0
+hudDivider.Size = UDim2.new(1, -8, 0, 1)
+hudDivider.Position = UDim2.new(0, 8, 0, 38)
+hudDivider.ZIndex = 2
+
+local hudLabel = Instance.new("TextLabel")
+hudLabel.Parent = hudFrame
+hudLabel.BackgroundTransparency = 1
+hudLabel.Font = Enum.Font.Gotham
+hudLabel.TextSize = HUD.Size
+hudLabel.TextXAlignment = Enum.TextXAlignment.Left
+hudLabel.TextYAlignment = Enum.TextYAlignment.Top
+hudLabel.Size = UDim2.new(1, -8, 1, -48)
+hudLabel.Position = UDim2.new(0, 8, 0, 44)
+hudLabel.Text = "..."
+hudLabel.TextWrapped = true
+hudLabel.ZIndex = 2
+
+local function applyHUDColors()
+    local tc = ThemeColors[currentTheme] or ThemeColors.Amethyst
+    local bg      = HUD.BgColor or tc.Dialog
+    local accent  = HUD.Accent  or tc.Accent
+    local outline = tc.Outline
+    local text    = tc.Text
+    local subtext = tc.SubText
+
+    hudFrame.BackgroundColor3 = bg
+    hudFrame.BackgroundTransparency = HUD.BgTransparency or 0.15
+    hudStroke.Color = outline
+    hudStroke.Transparency = 0.3
+    hudTitle.TextColor3 = text
+    hudSubtitle.TextColor3 = subtext
+    hudDivider.BackgroundColor3 = outline
+    hudDivider.BackgroundTransparency = 0.6
+    hudLabel.TextColor3 = text
+    hudAccentBar.BackgroundColor3 = accent
+end
+
+applyHUDColors()
+
+-- ==================== TRAIL ====================
+local trailInst, trailAttach1, trailAttach2, trailHostPart
+local flatPart, flatAttach1, flatAttach2, flatTrail
+
+local function findRearPart(car)
+    local seat = car:FindFirstChild("DriveSeat", true) or car:FindFirstChildWhichIsA("VehicleSeat", true)
+    if not seat then return nil end
+    local seatPos = seat.Position
+    local backDir = -seat.CFrame.LookVector
+    local best, bestDot = nil, -math.huge
+    for _, d in ipairs(car:GetDescendants()) do
+        if d:IsA("BasePart") and d ~= seat and not d.Massless then
+            local dot = (d.Position - seatPos):Dot(backDir)
+            if dot > bestDot then bestDot = dot; best = d end
         end
     end
-    -- Обновляем UI
-    if Elements.Speed     then Elements.Speed:Set(VehicleSpeed) end
-    if Elements.Enabled   then Elements.Enabled:Set(AW.Enabled) end
-    if Elements.Cruise    then Elements.Cruise:Set(AW.Cruise) end
-    if Elements.Target    then Elements.Target:Set(AW.TARGET) end
-    if Elements.Over      then Elements.Over:Set(AW.OVER) end
-    if Elements.Kick      then Elements.Kick:Set(AW.KICK_TIME) end
-    if Elements.PEnabled  then Elements.PEnabled:Set(AW.PEnabled) end
-    if Elements.PFrom     then Elements.PFrom:Set(AW.PFrom) end
-    if Elements.PTo       then Elements.PTo:Set(AW.PTo) end
-    if Elements.FallSpd   then Elements.FallSpd:Set(AW.FALL_SPD) end
-    if Elements.RiseSpd   then Elements.RiseSpd:Set(AW.RISE_SPD) end
-    if Elements.PulseMin  then Elements.PulseMin:Set(AW.PULSE_MIN) end
-    if Elements.PulseMax  then Elements.PulseMax:Set(AW.PULSE_MAX) end
-    if Elements.Smooth    then Elements.Smooth:Set(AW.SMOOTH) end
-    if Elements.Logs      then Elements.Logs:Set(AW.LOGS) end
+    return best
 end
 
-local function saveConfig(name)
-    if not name or name == "" then return false, "Пустое имя" end
-    local ok, encoded = pcall(function() return game:GetService("HttpService"):JSONEncode(buildConfig()) end)
-    if not ok then return false, "Ошибка кодирования" end
-    local path = CONFIG_FOLDER .. "/" .. name .. ".json"
-    local sok, serr = pcall(function() writefile(path, encoded) end)
-    if not sok then return false, "Ошибка записи: " .. tostring(serr) end
-    return true
+local function findPartByPath(path)
+    if not path or path == "" then return nil end
+    path = path:gsub("^Workspace%.", ""):gsub("^workspace%.", "")
+    local node = workspace
+    for seg in string.gmatch(path, "[^%.]+") do
+        node = node:FindFirstChild(seg)
+        if not node then return nil end
+    end
+    return node
 end
 
-local function loadConfig(name)
-    local path = CONFIG_FOLDER .. "/" .. name .. ".json"
-    if not isfile(path) then return false, "Файл не найден" end
-    local ok, data = pcall(function() return readfile(path) end)
-    if not ok then return false, "Ошибка чтения" end
-    local dok, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
-    if not dok then return false, "Ошибка парсинга" end
-    applyConfig(cfg)
-    return true
-end
-
-local function deleteConfig(name)
-    local path = CONFIG_FOLDER .. "/" .. name .. ".json"
-    if not isfile(path) then return false end
-    pcall(function() delfile(path) end)
-    return true
-end
-
-local function listConfigs()
+local function getCarParts()
     local out = {}
-    local ok, files = pcall(function() return listfiles(CONFIG_FOLDER) end)
-    if not ok or not files then return out end
-    for _, path in ipairs(files) do
-        local name = path:match("([^/\\]+)%.json$")
-        if name then table.insert(out, name) end
+    local char = LocalPlayer.Character
+    if not char then return out end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return out end
+    local car = hum.SeatPart.Parent
+    if not car then return out end
+    for _, d in ipairs(car:GetDescendants()) do
+        if d:IsA("BasePart") then
+            local cleanName = (d:GetFullName():gsub("^Workspace%.", ""))
+            table.insert(out, cleanName)
+        end
     end
     return out
 end
 
--- ==================== SPEED HACK ФУНКЦИИ ====================
+local function destroyTrail()
+    if trailInst then trailInst:Destroy() trailInst = nil end
+    if trailAttach1 then trailAttach1:Destroy() trailAttach1 = nil end
+    if trailAttach2 then trailAttach2:Destroy() trailAttach2 = nil end
+    trailHostPart = nil
+end
+
+local function destroyFlatTrail()
+    if flatTrail then flatTrail:Destroy() flatTrail = nil end
+    if flatAttach1 then flatAttach1:Destroy() flatAttach1 = nil end
+    if flatAttach2 then flatAttach2:Destroy() flatAttach2 = nil end
+    if flatPart then flatPart:Destroy() flatPart = nil end
+end
+
+local function updateTrailProps()
+    local inst = trailInst or flatTrail
+    if not inst then return end
+    pcall(function()
+        inst.Lifetime = TrailCfg.Lifetime
+        inst.Color = ColorSequence.new(TrailCfg.Color1, TrailCfg.Color2)
+        inst.Transparency = NumberSequence.new(safeNum(TrailCfg.Transparency, 0.2))
+        inst.LightEmission = math.clamp(safeNum(TrailCfg.Brightness, 0.6), 0, 1)
+        inst.LightInfluence = 1 - math.clamp(safeNum(TrailCfg.Brightness, 0.6), 0, 1)
+    end)
+    if trailAttach1 then
+        trailAttach1.Position = Vector3.new(TrailCfg.OffsetX, TrailCfg.OffsetY + 0.2, TrailCfg.OffsetZ)
+    end
+    if trailAttach2 then
+        trailAttach2.Position = Vector3.new(TrailCfg.OffsetX, TrailCfg.OffsetY - 0.2, TrailCfg.OffsetZ)
+    end
+    if flatAttach1 then flatAttach1.Position = Vector3.new(TrailCfg.FlatWidth/2, 0, 0) end
+    if flatAttach2 then flatAttach2.Position = Vector3.new(-TrailCfg.FlatWidth/2, 0, 0) end
+end
+
+local function rebuildTrail()
+    destroyTrail()
+    if not TrailCfg.Enabled or TrailCfg.Mode == "flat" then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return end
+    local car = hum.SeatPart.Parent
+    if not car then return end
+    local target
+    if TrailCfg.Mode == "manual" and TrailCfg.ManualPath ~= "" then
+        target = findPartByPath(TrailCfg.ManualPath)
+    end
+    if not target or not target:IsA("BasePart") then
+        target = findRearPart(car)
+    end
+    if not target then return end
+    trailHostPart = target
+    trailAttach1 = Instance.new("Attachment")
+    trailAttach1.Parent = target
+    trailAttach2 = Instance.new("Attachment")
+    trailAttach2.Parent = target
+    trailInst = Instance.new("Trail")
+    trailInst.Attachment0 = trailAttach1
+    trailInst.Attachment1 = trailAttach2
+    trailInst.FaceCamera = true
+    trailInst.Parent = target
+    updateTrailProps()
+end
+
+local function rebuildFlatTrail()
+    destroyFlatTrail()
+    if not TrailCfg.Enabled or TrailCfg.Mode ~= "flat" then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return end
+    local car = hum.SeatPart.Parent
+    if not car then return end
+    local target
+    if TrailCfg.ManualPath ~= "" then target = findPartByPath(TrailCfg.ManualPath) end
+    if not target or not target:IsA("BasePart") then target = findRearPart(car) end
+    if not target then return end
+    flatPart = Instance.new("Part")
+    flatPart.Name = "SH_FlatTrailPart"
+    flatPart.Anchored = true
+    flatPart.CanCollide = false
+    flatPart.CanQuery = false
+    flatPart.CanTouch = false
+    flatPart.Transparency = 1
+    flatPart.Size = Vector3.new(0.1, 0.1, 0.1)
+    flatPart.CFrame = target.CFrame
+    flatPart.Parent = workspace
+    flatAttach1 = Instance.new("Attachment")
+    flatAttach1.Parent = flatPart
+    flatAttach2 = Instance.new("Attachment")
+    flatAttach2.Parent = flatPart
+    flatTrail = Instance.new("Trail")
+    flatTrail.Attachment0 = flatAttach1
+    flatTrail.Attachment1 = flatAttach2
+    flatTrail.FaceCamera = false
+    flatTrail.Parent = flatPart
+    updateTrailProps()
+end
+
+local function updateFlatTrailPosition()
+    if not flatPart or not flatPart.Parent then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return end
+    local car = hum.SeatPart.Parent
+    if not car then return end
+    local target
+    if TrailCfg.ManualPath ~= "" then target = findPartByPath(TrailCfg.ManualPath) end
+    if not target or not target:IsA("BasePart") then target = findRearPart(car) end
+    if not target then return end
+
+    local pos = target.Position
+    local look = target.CFrame.LookVector
+    local right = target.CFrame.RightVector
+
+    local offX = safeNum(TrailCfg.FlatOffsetX, 0)
+    local offZ = safeNum(TrailCfg.FlatOffsetZ, 0)
+    local flatLookUnit = Vector3.new(look.X, 0, look.Z)
+    if flatLookUnit.Magnitude < 0.01 then flatLookUnit = Vector3.new(1, 0, 0) end
+    flatLookUnit = flatLookUnit.Unit
+    local offset = right * offX + flatLookUnit * offZ
+
+    local groundY = pos.Y - (target.Size.Y / 2)
+    local flatPos = Vector3.new(
+        pos.X + offset.X,
+        groundY + safeNum(TrailCfg.FlatHeight, 0.05),
+        pos.Z + offset.Z
+    )
+    local cf = CFrame.lookAt(flatPos, flatPos + flatLookUnit)
+    local rotDeg = math.floor(safeNum(TrailCfg.FlatRotation, 0) + 0.5)
+    cf = cf * CFrame.Angles(0, math.rad(rotDeg), 0)
+    flatPart.CFrame = cf
+end
+
+-- ==================== HELPERS ====================
 local function GetVehicle()
     local Seat = Humanoid.SeatPart
     if Seat and Seat:IsA("VehicleSeat") then return Seat.Parent end
@@ -155,280 +479,16 @@ local function BoostForward()
         Vehicle.PrimaryPart.AssemblyLinearVelocity =
             Vehicle.PrimaryPart.CFrame.LookVector * VehicleSpeed * 5
     elseif Vehicle then
-        local Base = Vehicle:FindFirstChild("Chassis")
-            or Vehicle:FindFirstChild("Body")
+        local Base = Vehicle:FindFirstChild("Chassis") or Vehicle:FindFirstChild("Body")
             or Vehicle:FindFirstChildWhichIsA("BasePart")
         if Base then
             Base.AssemblyLinearVelocity = Base.CFrame.LookVector * VehicleSpeed * 5
         end
-    else
-        Rayfield:Notify({Title="Ошибка", Content="Ты не в машине!", Duration=3})
     end
 end
 
--- ==================== ОКНО ====================
-local Window = Rayfield:CreateWindow({
-    Name = "Sashamotyan Hub",
-    LoadingTitle = "Sashamotyan Hub",
-    LoadingSubtitle = "by sashamotyan",
-    Theme = "Default",
-    ToggleUIKeybind = "K",
-})
-
--- ==================== SPEED HACK ====================
-local SpeedTab = Window:CreateTab("Speed Hack", 4483345998)
-SpeedTab:CreateSection("Инструкция")
-SpeedTab:CreateParagraph({
-    Title = "Как пользоваться",
-    Content = "Сядь в машину. Настрой скорость и жми ALT (или свою клавишу)."
-})
-SpeedTab:CreateSection("Настройки")
-
-Elements.Speed = SpeedTab:CreateSlider({
-    Name = "Boost Speed", Range = {0, 500}, Increment = 5,
-    CurrentValue = VehicleSpeed,
-    Callback = function(v) VehicleSpeed = v end,
-})
-SpeedTab:CreateButton({
-    Name = "Boost Forward (сразу)",
-    Callback = function() BoostForward() end,
-})
-SpeedTab:CreateButton({
-    Name = "Set Boost Bind",
-    Callback = function()
-        ListeningForBind = true
-        Rayfield:Notify({Title="Bind", Content="Нажми любую клавишу...", Duration=3})
-    end,
-})
-
--- ==================== AUTO WHEELIE ====================
-local AWTab = Window:CreateTab("Auto Wheelie", 4483362458)
-AWTab:CreateSection("Управление")
-
-Elements.Enabled = AWTab:CreateToggle({
-    Name = "Включить автовилли", CurrentValue = AW.Enabled,
-    Callback = function(v) AW.Enabled = v end,
-})
-Elements.Cruise = AWTab:CreateToggle({
-    Name = "Круиз (W держится)", CurrentValue = AW.Cruise,
-    Callback = function(v) AW.Cruise = v end,
-})
-Elements.Target = AWTab:CreateSlider({
-    Name = "Целевой угол", Range = {10, 120}, Increment = 1,
-    CurrentValue = AW.TARGET, Callback = function(v) AW.TARGET = v end,
-})
-Elements.Over = AWTab:CreateSlider({
-    Name = "Сброс (S) при угле", Range = {30, 160}, Increment = 1,
-    CurrentValue = AW.OVER, Callback = function(v) AW.OVER = v end,
-})
-
-AWTab:CreateSection("Подрыв")
-Elements.Kick = AWTab:CreateSlider({
-    Name = "Начальный подрыв", Range = {0, 1.5}, Increment = 0.05,
-    CurrentValue = AW.KICK_TIME, Callback = function(v) AW.KICK_TIME = v end,
-})
-
-AWTab:CreateSection("Перевал (P)")
-Elements.PEnabled = AWTab:CreateToggle({
-    Name = "Зажимать P при перевале", CurrentValue = AW.PEnabled,
-    Callback = function(v)
-        AW.PEnabled = v
-        Rayfield:Notify({Title="Перевал P", Content=v and "ВКЛ" or "ВЫКЛ", Duration=2})
-    end,
-})
-Elements.PFrom = AWTab:CreateSlider({
-    Name = "P: от угла", Range = {20, 180}, Increment = 1,
-    CurrentValue = AW.PFrom, Callback = function(v) AW.PFrom = v end,
-})
-Elements.PTo = AWTab:CreateSlider({
-    Name = "P: до угла", Range = {20, 180}, Increment = 1,
-    CurrentValue = AW.PTo, Callback = function(v) AW.PTo = v end,
-})
-
--- ==================== ТЮНИНГ AW ====================
-local TuneTab = Window:CreateTab("Тюнинг AW", 4483362458)
-TuneTab:CreateSection("Газ")
-
-Elements.FallSpd = TuneTab:CreateSlider({
-    Name = "Порог падения", Range = {-20, 0}, Increment = 1,
-    CurrentValue = AW.FALL_SPD, Callback = function(v) AW.FALL_SPD = v end,
-})
-Elements.RiseSpd = TuneTab:CreateSlider({
-    Name = "Порог роста", Range = {0, 30}, Increment = 1,
-    CurrentValue = AW.RISE_SPD, Callback = function(v) AW.RISE_SPD = v end,
-})
-TuneTab:CreateSection("Импульсы")
-Elements.PulseMin = TuneTab:CreateSlider({
-    Name = "Мин. импульс", Range = {0.02, 0.30}, Increment = 0.01,
-    CurrentValue = AW.PULSE_MIN, Callback = function(v) AW.PULSE_MIN = v end,
-})
-Elements.PulseMax = TuneTab:CreateSlider({
-    Name = "Макс. импульс", Range = {0.05, 0.60}, Increment = 0.01,
-    CurrentValue = AW.PULSE_MAX, Callback = function(v) AW.PULSE_MAX = v end,
-})
-TuneTab:CreateSection("Сглаживание")
-Elements.Smooth = TuneTab:CreateSlider({
-    Name = "Сглаживание угла", Range = {0.1, 1.0}, Increment = 0.05,
-    CurrentValue = AW.SMOOTH, Callback = function(v) AW.SMOOTH = v end,
-})
-
--- ==================== КОНФИГИ ====================
-local CfgTab = Window:CreateTab("Конфиги", 4483362458)
-
-CfgTab:CreateSection("Сохранить")
-
-local cfgNameInput = "default"
-CfgTab:CreateInput({
-    Name = "Имя конфига",
-    CurrentValue = "default",
-    PlaceholderText = "myconfig",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(v) cfgNameInput = v end,
-})
-
-CfgTab:CreateButton({
-    Name = "💾 Сохранить текущий",
-    Callback = function()
-        local ok, err = saveConfig(cfgNameInput)
-        if ok then
-            Rayfield:Notify({
-                Title = "Конфиг",
-                Content = "Сохранено: " .. cfgNameInput,
-                Duration = 3,
-            })
-        else
-            Rayfield:Notify({
-                Title = "Ошибка",
-                Content = err or "Не удалось сохранить",
-                Duration = 3,
-            })
-        end
-    end,
-})
-
-CfgTab:CreateSection("Загрузить")
-
-local cfgDropdown = CfgTab:CreateDropdown({
-    Name = "Выбери конфиг",
-    Options = listConfigs(),
-    CurrentOption = {},
-    MultipleOptions = false,
-    Flag = "CfgSelect",
-    Callback = function(opt)
-        if type(opt) == "table" then cfgNameInput = opt[1] or cfgNameInput
-        else cfgNameInput = opt end
-    end,
-})
-
-CfgTab:CreateButton({
-    Name = "📂 Загрузить выбранный",
-    Callback = function()
-        if not cfgNameInput or cfgNameInput == "" then
-            Rayfield:Notify({Title="Ошибка", Content="Не выбран конфиг", Duration=3})
-            return
-        end
-        local ok, err = loadConfig(cfgNameInput)
-        if ok then
-            Rayfield:Notify({
-                Title = "Конфиг",
-                Content = "Загружено: " .. cfgNameInput,
-                Duration = 3,
-            })
-        else
-            Rayfield:Notify({
-                Title = "Ошибка",
-                Content = err or "Не удалось загрузить",
-                Duration = 3,
-            })
-        end
-    end,
-})
-
-CfgTab:CreateButton({
-    Name = "🔄 Обновить список",
-    Callback = function()
-        cfgDropdown:Refresh(listConfigs())
-        Rayfield:Notify({Title="Конфиги", Content="Список обновлён", Duration=2})
-    end,
-})
-
-CfgTab:CreateSection("Удалить")
-
-CfgTab:CreateButton({
-    Name = "🗑 Удалить выбранный",
-    Callback = function()
-        if not cfgNameInput or cfgNameInput == "" then return end
-        if deleteConfig(cfgNameInput) then
-            cfgDropdown:Refresh(listConfigs())
-            Rayfield:Notify({Title="Конфиг", Content="Удалено: " .. cfgNameInput, Duration=3})
-        else
-            Rayfield:Notify({Title="Ошибка", Content="Файл не найден", Duration=3})
-        end
-    end,
-})
-
-CfgTab:CreateSection("Автозагрузка")
-CfgTab:CreateParagraph({
-    Title = "Как пользоваться",
-    Content = "Введи имя → Сохранить. Чтобы загрузить — выбери в списке → Загрузить. Файлы лежат в workspace/" .. CONFIG_FOLDER
-})
-
--- ==================== ПРОЧЕЕ ====================
-local MiscTab = Window:CreateTab("Прочее", 4483362458)
-MiscTab:CreateSection("Отладка")
-
-Elements.Logs = MiscTab:CreateToggle({
-    Name = "Печатать логи", CurrentValue = AW.LOGS,
-    Callback = function(v) AW.LOGS = v end,
-})
-
-MiscTab:CreateSection("Действия")
-MiscTab:CreateButton({
-    Name = "Сбросить настройки AW",
-    Callback = function()
-        AW.TARGET = 75; AW.FALL_SPD = -3; AW.RISE_SPD = 4
-        AW.PULSE_MIN = 0.06; AW.PULSE_MAX = 0.20
-        AW.SMOOTH = 0.5; AW.OVER = 77; AW.KICK_TIME = 0.3
-        AW.Cruise = false; AW.PEnabled = true
-        AW.PFrom = 82; AW.PTo = 180
-        applyConfig({ AW = AW, VehicleSpeed = 50, BoostKeybind = "LeftAlt" })
-        Rayfield:Notify({Title="Auto Wheelie", Content="Настройки сброшены", Duration=3})
-    end,
-})
-
--- ==================== ВВОД: БИНД SPEED ====================
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if ListeningForBind then
-        if input.UserInputType == Enum.UserInputType.Keyboard then
-            BoostKeybind = input.KeyCode
-            ListeningForBind = false
-            Rayfield:Notify({
-                Title = "Bind Set",
-                Content = "Boost Forward привязан к: " .. input.KeyCode.Name,
-                Duration = 4,
-            })
-        end
-        return
-    end
-    if UIS:GetFocusedTextBox() then return end
-    if input.KeyCode == BoostKeybind then BoostForward() end
-end)
-
--- ==================== AW ЛОГИКА ====================
-local ctrl, prevCtrl = false, false
-UIS.InputBegan:Connect(function(i)
-    if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then
-        ctrl = true
-    end
-end)
-UIS.InputEnded:Connect(function(i)
-    if i.KeyCode == Enum.KeyCode.LeftControl or i.KeyCode == Enum.KeyCode.RightControl then
-        ctrl = false
-    end
-end)
-
-local function isInVehicle()
-    local char = Players.LocalPlayer.Character
+local function isInVehicleSafe()
+    local char = LocalPlayer.Character
     if not char then return false end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or not hum.SeatPart then return false end
@@ -437,43 +497,1261 @@ end
 
 local smoothPitch = 0
 local function getPitch()
-    local char = Players.LocalPlayer.Character
+    local char = LocalPlayer.Character
     if not char then return nil end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or not hum.SeatPart then return nil end
     local seat = hum.SeatPart
     if not seat:IsA("BasePart") then return nil end
     local raw = math.deg(math.asin(math.clamp(seat.CFrame.LookVector.Y, -1, 1)))
-    smoothPitch = smoothPitch + (raw - smoothPitch) * AW.SMOOTH
+    smoothPitch = smoothPitch + (raw - smoothPitch) * safeNum(AW.SMOOTH, 0.5)
     return smoothPitch
 end
 
-local wSent, sSent = false, false
-local function sendW(d)
-    if d == wSent then return end
-    wSent = d
-    VIM:SendKeyEvent(d, Enum.KeyCode.W, false, game)
-end
-local function sendS(d)
-    if d == sSent then return end
-    sSent = d
-    VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game)
+local function sendW(d) if d == wSent then return end wSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.W, false, game) end
+local function sendS(d) if d == sSent then return end sSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game) end
+local function sendA(d) if d == aSent then return end aSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.A, false, game) end
+local function sendD(d) if d == dSent then return end dSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.D, false, game) end
+local function sendQ(d) if d == qSent then return end qSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.Q, false, game) end
+local function sendE(d) if d == eSent then return end eSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.E, false, game) end
+local function sendCtrl(d) if d == ctrlVirt then return end ctrlVirt = d; VIM:SendKeyEvent(d, Enum.KeyCode.LeftControl, false, game) end
+local function setP(d) if d == pIsDown then return end pIsDown = d; VIM:SendKeyEvent(d, AW.PKey, false, game) end
+
+-- ==================== LIGHTING / FX ====================
+local FX_NAMES = { ColorCorrection="SH_ColorCorrection", Bloom="SH_Bloom", SunRays="SH_SunRays", Blur="SH_Blur", Atmosphere="SH_Atmosphere" }
+local FX_CLASSES = { ColorCorrection="ColorCorrectionEffect", Bloom="BloomEffect", SunRays="SunRaysEffect", Blur="BlurEffect", Atmosphere="Atmosphere" }
+
+local function ensureEffect(key)
+    local name = FX_NAMES[key]; local class = FX_CLASSES[key]
+    local fx = Lighting:FindFirstChild(name)
+    if not fx or not fx:IsA(class) then
+        if fx then fx:Destroy() end
+        local ok, newFx = pcall(Instance.new, class)
+        if not ok then return nil end
+        fx = newFx; fx.Name = name; fx.Parent = Lighting
+    end
+    return fx
 end
 
-local pIsDown = false
-local function setP(down)
-    if down == pIsDown then return end
-    pIsDown = down
-    VIM:SendKeyEvent(down, AW.PKey, false, game)
-    P("P "..(down and "DOWN" or "UP"))
+local function setEffect(key, props)
+    local hasAny = false
+    for _, v in pairs(props) do if v ~= nil then hasAny = true break end end
+    if not hasAny then
+        local fx = Lighting:FindFirstChild(FX_NAMES[key])
+        if fx then fx:Destroy() end
+        return
+    end
+    local fx = ensureEffect(key)
+    if not fx then return end
+    for k, v in pairs(props) do if v ~= nil then pcall(function() fx[k] = v end) end end
 end
 
+local function resetEffects()
+    for _, name in pairs(FX_NAMES) do
+        local fx = Lighting:FindFirstChild(name)
+        if fx then fx:Destroy() end
+    end
+end
+
+local function applyCC() setEffect("ColorCorrection", { Brightness=CC.Brightness~=0 and CC.Brightness or nil, Contrast=CC.Contrast~=0 and CC.Contrast or nil, Saturation=CC.Saturation~=0 and CC.Saturation or nil, TintColor=CC.TintColor }) end
+local function applyBL() setEffect("Bloom", { Intensity=BL.Intensity, Size=BL.Size, Threshold=BL.Threshold }) end
+local function applySR() setEffect("SunRays", { Intensity=SR.Intensity, Spread=SR.Spread }) end
+local function applyBR() setEffect("Blur", { Size=BR.Size }) end
+local function applyAT() setEffect("Atmosphere", { Density=AT.Density, Haze=AT.Haze, Glare=AT.Glare, Color=AT.Color }) end
+
+local function resetLighting()
+    TimeLock.Active = false
+    for k, v in pairs(LightOrig) do
+        pcall(function() Lighting[k] = v end)
+    end
+end
+-- ==================== ЯЗЫК ====================
+local Lang = {
+    current = "ru",
+    dict = {
+        ru = {
+            win_title = "Sashamotyan Hub", win_sub = "от sashamotyan",
+            tab_speed = "Спидхак", tab_aw = "Автовилли", tab_tune = "Тюнинг AW",
+            tab_hud = "HUD", tab_trail = "Trail", tab_visual = "Визуал",
+            tab_auto = "Автотюнинг", tab_replay = "Реплей", tab_cfg = "Конфиги", tab_misc = "Прочее",
+            lang_section = "Язык / Language",
+            lang_choose = "Язык интерфейса",
+            load_ok = "Загружено. Boost: Alt | Меню: K",
+            speed_title = "Как пользоваться",
+            speed_desc = "Сядь в машину. Настрой скорость и жми бинд.",
+            boost_speed = "Boost Speed",
+            boost_now = "Boost Forward (сразу)",
+            boost_bind = "Клавиша буста",
+            aw_on = "Включить автовилли",
+            aw_cruise = "Круиз (W держится)",
+            aw_target = "Целевой угол",
+            aw_over = "Сброс (S) при угле",
+            aw_kick_sect = "Подрыв",
+            aw_kick = "Начальный подрыв",
+            aw_p_sect = "Перевал (P)",
+            aw_p_en = "Зажимать P при перевале",
+            aw_p_from = "P: от угла",
+            aw_p_to = "P: до угла",
+            tune_sect_gas = "Газ",
+            tune_fall = "Порог падения",
+            tune_rise = "Порог роста",
+            tune_sect_imp = "Импульсы",
+            tune_pmin = "Мин. импульс",
+            tune_pmax = "Макс. импульс",
+            tune_sect_sm = "Сглаживание",
+            tune_smooth = "Сглаживание угла",
+            hud_title = "HUD настройки",
+            vis_show = "Показывать HUD",
+            vis_speed = "Показывать скорость",
+            vis_size = "Размер шрифта",
+            vis_x = "HUD X",
+            vis_y = "HUD Y",
+            hud_accent = "Акцентный цвет HUD",
+            hud_bg = "Цвет фона HUD",
+            hud_bg_trans = "Прозрачность фона",
+            hud_apply = "Сбросить цвета к теме",
+            trail_title = "Trail настройки",
+            vis_trail_en = "Включить Trail",
+            vis_trail_mode = "Режим трейла",
+            vis_trail_path = "Путь к части",
+            vis_show_parts = "Показать части машины",
+            vis_reattach = "Перецепить Trail",
+            vis_shape = "Форма",
+            vis_lifetime = "Длина следа",
+            vis_ox = "Смещение X", vis_oy = "Смещение Y", vis_oz = "Смещение Z",
+            vis_flat = "Плоский режим",
+            vis_flat_h = "Высота над землёй",
+            vis_flat_w = "Ширина полосы",
+            vis_flat_r = "Поворот трейла (градусы)",
+            vis_flat_ox = "Смещение по X (в бок)",
+            vis_flat_oz = "Смещение по Z (вперёд/назад)",
+            vis_view = "Вид",
+            vis_trans = "Прозрачность",
+            vis_bright = "Свечение",
+            vis_c1 = "Цвет 1 (начало)", vis_c2 = "Цвет 2 (конец)",
+            theme_section = "Тема интерфейса",
+            theme_choose = "Выбери тему",
+            theme_note = "Тема применится после перезапуска скрипта (сохраняется автоматически)",
+        },
+        en = {
+            win_title = "Sashamotyan Hub", win_sub = "by sashamotyan",
+            tab_speed = "Speed Hack", tab_aw = "Auto Wheelie", tab_tune = "AW Tuning",
+            tab_hud = "HUD", tab_trail = "Trail", tab_visual = "Visual",
+            tab_auto = "Autotune", tab_replay = "Replay", tab_cfg = "Configs", tab_misc = "Misc",
+            lang_section = "Language / Язык",
+            lang_choose = "Interface language",
+            load_ok = "Loaded. Boost: Alt | Menu: K",
+            speed_title = "How to use",
+            speed_desc = "Sit in vehicle. Set speed and press bind.",
+            boost_speed = "Boost Speed",
+            boost_now = "Boost Forward (now)",
+            boost_bind = "Boost keybind",
+            aw_on = "Enable Auto Wheelie",
+            aw_cruise = "Cruise (hold W)",
+            aw_target = "Target angle",
+            aw_over = "Reset (S) at angle",
+            aw_kick_sect = "Kick",
+            aw_kick = "Initial kick",
+            aw_p_sect = "Overflow (P)",
+            aw_p_en = "Hold P at overflow",
+            aw_p_from = "P: from angle",
+            aw_p_to = "P: to angle",
+            tune_sect_gas = "Gas",
+            tune_fall = "Fall threshold",
+            tune_rise = "Rise threshold",
+            tune_sect_imp = "Pulses",
+            tune_pmin = "Min pulse",
+            tune_pmax = "Max pulse",
+            tune_sect_sm = "Smoothing",
+            tune_smooth = "Angle smoothing",
+            hud_title = "HUD settings",
+            vis_show = "Show HUD",
+            vis_speed = "Show speed",
+            vis_size = "Font size",
+            vis_x = "HUD X",
+            vis_y = "HUD Y",
+            hud_accent = "HUD accent color",
+            hud_bg = "HUD background color",
+            hud_bg_trans = "Background transparency",
+            hud_apply = "Reset colors to theme",
+            trail_title = "Trail settings",
+            vis_trail_en = "Enable Trail",
+            vis_trail_mode = "Trail mode",
+            vis_trail_path = "Part path",
+            vis_show_parts = "Show vehicle parts",
+            vis_reattach = "Reattach Trail",
+            vis_shape = "Shape",
+            vis_lifetime = "Trail length",
+            vis_ox = "Offset X", vis_oy = "Offset Y", vis_oz = "Offset Z",
+            vis_flat = "Flat mode",
+            vis_flat_h = "Height above ground",
+            vis_flat_w = "Stripe width",
+            vis_flat_r = "Trail rotation (degrees)",
+            vis_flat_ox = "Offset X (sideways)",
+            vis_flat_oz = "Offset Z (forward/back)",
+            vis_view = "View",
+            vis_trans = "Transparency",
+            vis_bright = "Glow",
+            vis_c1 = "Color 1 (start)", vis_c2 = "Color 2 (end)",
+            theme_section = "Interface theme",
+            theme_choose = "Choose theme",
+            theme_note = "Theme applies on script restart (auto-saved)",
+        },
+    },
+}
+local function T(k) return Lang.dict[Lang.current][k] or k end
+
+-- ==================== UI BUILD ====================
+local Window, Tabs, Options
+
+local function buildUI()
+    Window = Fluent:CreateWindow({
+        Title = T("win_title"),
+        SubTitle = T("win_sub"),
+        TabWidth = 160,
+        Size = UDim2.fromOffset(580, 460),
+        Acrylic = true,
+        Theme = currentTheme,
+        MinimizeKey = Enum.KeyCode.K,
+    })
+    Options = Fluent.Options
+
+    Tabs = {
+        Speed   = Window:AddTab({ Title = T("tab_speed"), Icon = "gauge" }),
+        Wheelie = Window:AddTab({ Title = T("tab_aw"), Icon = "bike" }),
+        Tune    = Window:AddTab({ Title = T("tab_tune"), Icon = "sliders-horizontal" }),
+        HUD     = Window:AddTab({ Title = T("tab_hud"), Icon = "monitor" }),
+        Trail   = Window:AddTab({ Title = T("tab_trail"), Icon = "wind" }),
+        Visual  = Window:AddTab({ Title = T("tab_visual"), Icon = "eye" }),
+        Auto    = Window:AddTab({ Title = T("tab_auto"), Icon = "wand" }),
+        Replay  = Window:AddTab({ Title = T("tab_replay"), Icon = "video" }),
+        Config  = Window:AddTab({ Title = T("tab_cfg"), Icon = "save" }),
+        Misc    = Window:AddTab({ Title = T("tab_misc"), Icon = "settings" }),
+    }
+
+    -- ============ SPEED HACK ============
+    Tabs.Speed:AddParagraph({ Title = T("speed_title"), Content = T("speed_desc") })
+    Tabs.Speed:AddSlider("SpeedSlider", {
+        Title = T("boost_speed"), Default = 50, Min = 0, Max = 500, Rounding = 1,
+        Callback = function(v) VehicleSpeed = safeNum(v, 50) end,
+    })
+    Tabs.Speed:AddButton({ Title = T("boost_now"), Callback = function() pcall(BoostForward) end })
+    Tabs.Speed:AddKeybind("BoostBind", {
+        Title = T("boost_bind"),
+        Mode = "Press",
+        Default = "LeftAlt",
+        Callback = function(v)
+            if typeof(v) == "EnumItem" then
+                BoostKeybind = v
+                BoostBindState.value = v
+                Fluent:Notify({ Title = "Bind", Content = v.Name, Duration = 2 })
+            end
+        end,
+    })
+
+    -- ============ AUTO WHEELIE ============
+    Tabs.Wheelie:AddToggle("AWEnabled", { Title = T("aw_on"), Default = true, Callback = function(v) AW.Enabled = v end })
+    Tabs.Wheelie:AddToggle("AWCruise", { Title = T("aw_cruise"), Default = false, Callback = function(v) AW.Cruise = v end })
+    Tabs.Wheelie:AddSlider("AWTarget", { Title = T("aw_target"), Default = 75, Min = 10, Max = 120, Rounding = 1, Callback = function(v) AW.TARGET = roundInt(v) end })
+    Tabs.Wheelie:AddSlider("AWOver", { Title = T("aw_over"), Default = 77, Min = 30, Max = 160, Rounding = 1, Callback = function(v) AW.OVER = roundInt(v) end })
+    Tabs.Wheelie:AddSection(T("aw_kick_sect"))
+    Tabs.Wheelie:AddSlider("AWKick", { Title = T("aw_kick"), Default = 0.3, Min = 0, Max = 1.5, Rounding = 2, Callback = function(v) AW.KICK_TIME = round2(v) end })
+    Tabs.Wheelie:AddSection(T("aw_p_sect"))
+    Tabs.Wheelie:AddToggle("AWPEnabled", { Title = T("aw_p_en"), Default = true, Callback = function(v) AW.PEnabled = v end })
+    Tabs.Wheelie:AddSlider("AWPFrom", { Title = T("aw_p_from"), Default = 82, Min = 20, Max = 180, Rounding = 1, Callback = function(v) AW.PFrom = roundInt(v) end })
+    Tabs.Wheelie:AddSlider("AWPTo", { Title = T("aw_p_to"), Default = 180, Min = 20, Max = 180, Rounding = 1, Callback = function(v) AW.PTo = roundInt(v) end })
+
+    -- ============ TUNING ============
+    Tabs.Tune:AddSection(T("tune_sect_gas"))
+    Tabs.Tune:AddSlider("AWFallSpd", { Title = T("tune_fall"), Default = -3, Min = -20, Max = 0, Rounding = 1, Callback = function(v) AW.FALL_SPD = roundInt(v) end })
+    Tabs.Tune:AddSlider("AWRiseSpd", { Title = T("tune_rise"), Default = 4, Min = 0, Max = 30, Rounding = 1, Callback = function(v) AW.RISE_SPD = roundInt(v) end })
+    Tabs.Tune:AddSection(T("tune_sect_imp"))
+    Tabs.Tune:AddSlider("AWPulseMin", { Title = T("tune_pmin"), Default = 0.06, Min = 0.02, Max = 0.3, Rounding = 2, Callback = function(v) AW.PULSE_MIN = round2(v) end })
+    Tabs.Tune:AddSlider("AWPulseMax", { Title = T("tune_pmax"), Default = 0.2, Min = 0.05, Max = 0.6, Rounding = 2, Callback = function(v) AW.PULSE_MAX = round2(v) end })
+    Tabs.Tune:AddSection(T("tune_sect_sm"))
+    Tabs.Tune:AddSlider("AWSmooth", { Title = T("tune_smooth"), Default = 0.5, Min = 0.1, Max = 1, Rounding = 2, Callback = function(v) AW.SMOOTH = round2(v) end })
+
+    -- ============ HUD ============
+    Tabs.HUD:AddSection(T("hud_title"))
+    Tabs.HUD:AddToggle("HUDEnabled", {
+        Title = T("vis_show"), Default = true,
+        Callback = function(v)
+            HUD.Enabled = v
+            if hudFrame then hudFrame.Visible = v end
+            if hudShadow then hudShadow.Visible = v end
+        end,
+    })
+    Tabs.HUD:AddToggle("HUDSpeed", { Title = T("vis_speed"), Default = true, Callback = function(v) HUD.ShowSpeed = v end })
+    Tabs.HUD:AddDropdown("HUDSpeedUnit", {
+        Title = "Единица скорости",
+        Values = {"studs/s", "km/h", "mph"},
+        Default = "km/h",
+        Multi = false,
+        Callback = function(v)
+            HUD.SpeedUnit = v
+        end,
+    })
+    Tabs.HUD:AddSlider("HUDSize", {
+        Title = T("vis_size"), Default = 14, Min = 10, Max = 24, Rounding = 1,
+        Callback = function(v)
+            HUD.Size = roundInt(v)
+            if hudLabel then hudLabel.TextSize = HUD.Size end
+        end,
+    })
+    Tabs.HUD:AddSlider("HUDX", {
+        Title = T("vis_x"), Default = 20, Min = 0, Max = 1500, Rounding = 1,
+        Callback = function(v)
+            HUD.X = roundInt(v)
+            if hudFrame then hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y) end
+            if hudShadow then hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72) end
+        end,
+    })
+    Tabs.HUD:AddSlider("HUDY", {
+        Title = T("vis_y"), Default = 20, Min = 0, Max = 900, Rounding = 1,
+        Callback = function(v)
+            HUD.Y = roundInt(v)
+            if hudFrame then hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y) end
+            if hudShadow then hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72) end
+        end,
+    })
+
+    Tabs.HUD:AddSection("Цвета HUD")
+    Tabs.HUD:AddColorpicker("HUDAccent", {
+        Title = T("hud_accent"),
+        Default = ThemeColors[currentTheme].Accent,
+        Callback = function(c)
+            HUD.Accent = c
+            applyHUDColors()
+        end,
+    })
+    Tabs.HUD:AddColorpicker("HUDBg", {
+        Title = T("hud_bg"),
+        Default = ThemeColors[currentTheme].Dialog,
+        Callback = function(c)
+            HUD.BgColor = c
+            applyHUDColors()
+        end,
+    })
+    Tabs.HUD:AddSlider("HUDBgTrans", {
+        Title = T("hud_bg_trans"),
+        Default = 0.15, Min = 0, Max = 1, Rounding = 2,
+        Callback = function(v)
+            HUD.BgTransparency = round2(v)
+            applyHUDColors()
+        end,
+    })
+    Tabs.HUD:AddButton({
+        Title = T("hud_apply"),
+        Callback = function()
+            HUD.Accent = nil
+            HUD.BgColor = nil
+            applyHUDColors()
+            Fluent:Notify({ Title = "HUD", Content = "Цвета сброшены к теме", Duration = 2 })
+        end,
+    })
+
+    -- ============ TRAIL ============
+    Tabs.Trail:AddSection(T("trail_title"))
+    Tabs.Trail:AddToggle("TrailEnabled", {
+        Title = T("vis_trail_en"), Default = false,
+        Callback = function(v)
+            TrailCfg.Enabled = v
+            pcall(function()
+                if v then
+                    if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
+                else
+                    destroyTrail(); destroyFlatTrail()
+                end
+            end)
+        end,
+    })
+    Tabs.Trail:AddDropdown("TrailMode", {
+        Title = T("vis_trail_mode"),
+        Values = {"Авто (заднее колесо)", "Вручную", "Плоский по земле"},
+        Default = 1, Multi = false,
+        Callback = function(v)
+            if v == "Вручную" then TrailCfg.Mode = "manual"
+            elseif v == "Плоский по земле" then TrailCfg.Mode = "flat"
+            else TrailCfg.Mode = "auto" end
+            pcall(function()
+                destroyTrail(); destroyFlatTrail()
+                if TrailCfg.Enabled then
+                    if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
+                end
+            end)
+        end,
+    })
+    Tabs.Trail:AddInput("TrailPath", {
+        Title = T("vis_trail_path"), Default = "", Placeholder = "Body.RearWheel", Finished = false,
+        Callback = function(v) TrailCfg.ManualPath = tostring(v or "") end,
+    })
+    Tabs.Trail:AddButton({
+        Title = T("vis_show_parts"),
+        Callback = function()
+            local parts = getCarParts()
+            for _, p in ipairs(parts) do print(p) end
+            Fluent:Notify({ Title = T("vis_show_parts"), Content = "Console (F9) - "..#parts.." parts", Duration = 5 })
+        end,
+    })
+    Tabs.Trail:AddButton({ Title = T("vis_reattach"), Callback = function() pcall(function() if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end end) end })
+
+    Tabs.Trail:AddSection(T("vis_shape"))
+    Tabs.Trail:AddSlider("TrailLifetime", { Title = T("vis_lifetime"), Default = 0.6, Min = 0.1, Max = 3, Rounding = 2, Callback = function(v) TrailCfg.Lifetime = round2(v); updateTrailProps() end })
+    Tabs.Trail:AddSlider("TrailOffX", { Title = T("vis_ox"), Default = 0, Min = -5, Max = 5, Rounding = 2, Callback = function(v) TrailCfg.OffsetX = round2(v); updateTrailProps() end })
+    Tabs.Trail:AddSlider("TrailOffY", { Title = T("vis_oy"), Default = 0, Min = -10, Max = 5, Rounding = 2, Callback = function(v) TrailCfg.OffsetY = round2(v); updateTrailProps() end })
+    Tabs.Trail:AddSlider("TrailOffZ", { Title = T("vis_oz"), Default = 0, Min = -5, Max = 5, Rounding = 2, Callback = function(v) TrailCfg.OffsetZ = round2(v); updateTrailProps() end })
+
+    Tabs.Trail:AddSection(T("vis_flat"))
+    Tabs.Trail:AddSlider("TrailFlatH", {
+        Title = T("vis_flat_h"), Default = 0.05,
+        Min = -5, Max = 3, Rounding = 3,
+        Callback = function(v)
+            TrailCfg.FlatHeight = safeNum(v, 0.05)
+            updateFlatTrailPosition()
+        end,
+    })
+    Tabs.Trail:AddSlider("TrailFlatW", { Title = T("vis_flat_w"), Default = 1.5, Min = 0.2, Max = 10, Rounding = 2, Callback = function(v) TrailCfg.FlatWidth = round2(v); updateTrailProps() end })
+    Tabs.Trail:AddSlider("TrailFlatR", {
+        Title = T("vis_flat_r"), Default = 0,
+        Min = -180, Max = 180, Rounding = 1,
+        Callback = function(v)
+            TrailCfg.FlatRotation = roundInt(v)
+            updateFlatTrailPosition()
+        end,
+    })
+    Tabs.Trail:AddSlider("TrailFlatOffsetX", {
+        Title = T("vis_flat_ox"), Default = 0,
+        Min = -5, Max = 5, Rounding = 2,
+        Callback = function(v)
+            TrailCfg.FlatOffsetX = round2(v)
+            updateFlatTrailPosition()
+        end,
+    })
+    Tabs.Trail:AddSlider("TrailFlatOffsetZ", {
+        Title = T("vis_flat_oz"), Default = 0,
+        Min = -5, Max = 5, Rounding = 2,
+        Callback = function(v)
+            TrailCfg.FlatOffsetZ = round2(v)
+            updateFlatTrailPosition()
+        end,
+    })
+
+    Tabs.Trail:AddSection(T("vis_view"))
+    Tabs.Trail:AddSlider("TrailTrans", { Title = T("vis_trans"), Default = 0.2, Min = 0, Max = 1, Rounding = 2, Callback = function(v) TrailCfg.Transparency = round2(v); updateTrailProps() end })
+    Tabs.Trail:AddSlider("TrailBright", { Title = T("vis_bright"), Default = 0.6, Min = 0, Max = 1, Rounding = 2, Callback = function(v) TrailCfg.Brightness = round2(v); updateTrailProps() end })
+    Tabs.Trail:AddColorpicker("TrailCol1", { Title = T("vis_c1"), Default = Color3.fromRGB(160,100,255), Callback = function(c) TrailCfg.Color1 = c; updateTrailProps() end })
+    Tabs.Trail:AddColorpicker("TrailCol2", { Title = T("vis_c2"), Default = Color3.fromRGB(255,100,255), Callback = function(c) TrailCfg.Color2 = c; updateTrailProps() end })
+end
+
+buildUI()
+Window:SelectTab(1)
+-- ==================== VISUAL ====================
+Tabs.Visual:AddSection("Погода / время")
+Tabs.Visual:AddSlider("LBr", {
+    Title = "Яркость", Default = 1, Min = 0, Max = 10, Rounding = 1,
+    Callback = function(v) Lighting.Brightness = safeNum(v, 1) end,
+})
+Tabs.Visual:AddSlider("LTime", {
+    Title = "Время суток", Default = math.floor(LightOrig.ClockTime + 0.5),
+    Min = 0, Max = 24, Rounding = 1,
+    Callback = function(v)
+        local n = roundInt(v)
+        TimeLock.Active = true
+        TimeLock.Value = n
+        Lighting.ClockTime = n
+    end,
+})
+Tabs.Visual:AddToggle("LTimeLock", {
+    Title = "Блокировать время", Default = false,
+    Callback = function(v) TimeLock.Active = v end,
+})
+Tabs.Visual:AddSlider("LExp", {
+    Title = "Экспозиция", Default = 0, Min = -3, Max = 3, Rounding = 2,
+    Callback = function(v) Lighting.ExposureCompensation = round2(v) end,
+})
+
+Tabs.Visual:AddSection("Тени и свет")
+Tabs.Visual:AddToggle("LShadows", { Title = "Глобальные тени", Default = LightOrig.GlobalShadows, Callback = function(v) Lighting.GlobalShadows = v end })
+Tabs.Visual:AddSlider("LAmb", {
+    Title = "Ambient яркость", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v)
+        local n = math.clamp(round2(v), 0, 1)
+        Lighting.Ambient = Color3.new(n, n, n)
+        Lighting.OutdoorAmbient = Color3.new(n, n, n)
+    end,
+})
+Tabs.Visual:AddSlider("LDiff", {
+    Title = "Diffuse", Default = 0, Min = 0, Max = 3, Rounding = 1,
+    Callback = function(v) Lighting.EnvironmentDiffuseScale = roundInt(v) end,
+})
+Tabs.Visual:AddSlider("LSpec", {
+    Title = "Specular", Default = 0, Min = 0, Max = 3, Rounding = 1,
+    Callback = function(v) Lighting.EnvironmentSpecularScale = roundInt(v) end,
+})
+
+Tabs.Visual:AddSection("Пресеты времени")
+Tabs.Visual:AddButton({
+    Title = "Рассвет (6:00)",
+    Callback = function() TimeLock.Active = true; TimeLock.Value = 6; Lighting.ClockTime = 6; Options.LTime:SetValue(6) end,
+})
+Tabs.Visual:AddButton({
+    Title = "День (12:00)",
+    Callback = function() TimeLock.Active = true; TimeLock.Value = 12; Lighting.ClockTime = 12; Options.LTime:SetValue(12) end,
+})
+Tabs.Visual:AddButton({
+    Title = "Закат (18:00)",
+    Callback = function() TimeLock.Active = true; TimeLock.Value = 18; Lighting.ClockTime = 18; Options.LTime:SetValue(18) end,
+})
+Tabs.Visual:AddButton({
+    Title = "Ночь (0:00)",
+    Callback = function() TimeLock.Active = true; TimeLock.Value = 0; Lighting.ClockTime = 0; Options.LTime:SetValue(0) end,
+})
+Tabs.Visual:AddButton({
+    Title = "Сбросить освещение",
+    Callback = function() resetLighting(); Fluent:Notify({ Title = "Lighting", Content = "Reset", Duration = 3 }) end,
+})
+
+Tabs.Visual:AddSection("Color Correction")
+Tabs.Visual:AddSlider("CCBr", { Title = "Яркость", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Brightness = round2(v); pcall(applyCC) end })
+Tabs.Visual:AddSlider("CCCon", { Title = "Контраст", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Contrast = round2(v); pcall(applyCC) end })
+Tabs.Visual:AddSlider("CCSat", { Title = "Насыщенность", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Saturation = round2(v); pcall(applyCC) end })
+Tabs.Visual:AddColorpicker("CCTint", { Title = "Тинт", Default = Color3.fromRGB(255,255,255), Callback = function(c) CC.TintColor = c; pcall(applyCC) end })
+
+Tabs.Visual:AddSection("Bloom (свечение)")
+Tabs.Visual:AddSlider("BLInt", { Title = "Интенсивность", Default = 0, Min = 0, Max = 5, Rounding = 2, Callback = function(v) local n = round2(v); BL.Intensity = n > 0.05 and n or nil; pcall(applyBL) end })
+Tabs.Visual:AddSlider("BLSize", { Title = "Размер", Default = 0, Min = 0, Max = 56, Rounding = 1, Callback = function(v) local n = roundInt(v); BL.Size = n > 1 and n or nil; pcall(applyBL) end })
+Tabs.Visual:AddSlider("BLThr", { Title = "Порог", Default = 0, Min = 0, Max = 5, Rounding = 2, Callback = function(v) local n = round2(v); BL.Threshold = n > 0.05 and n or nil; pcall(applyBL) end })
+
+Tabs.Visual:AddSection("Sun Rays (лучи солнца)")
+Tabs.Visual:AddSlider("SRInt", { Title = "Интенсивность", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); SR.Intensity = n > 0.02 and n or nil; pcall(applySR) end })
+Tabs.Visual:AddSlider("SRSpread", { Title = "Разброс", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); SR.Spread = n > 0.02 and n or nil; pcall(applySR) end })
+
+Tabs.Visual:AddSection("Blur (размытие)")
+Tabs.Visual:AddSlider("BRSize", { Title = "Размер", Default = 0, Min = 0, Max = 56, Rounding = 1, Callback = function(v) local n = roundInt(v); BR.Size = n > 1 and n or nil; pcall(applyBR) end })
+
+Tabs.Visual:AddSection("Atmosphere (атмосфера)")
+Tabs.Visual:AddSlider("ATDen", { Title = "Плотность", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); AT.Density = n > 0.02 and n or nil; pcall(applyAT) end })
+Tabs.Visual:AddSlider("ATHaze", { Title = "Дымка", Default = 0, Min = 0, Max = 10, Rounding = 2, Callback = function(v) local n = round2(v); AT.Haze = n > 0.05 and n or nil; pcall(applyAT) end })
+Tabs.Visual:AddSlider("ATGlare", { Title = "Блик", Default = 0, Min = 0, Max = 10, Rounding = 2, Callback = function(v) local n = round2(v); AT.Glare = n > 0.05 and n or nil; pcall(applyAT) end })
+Tabs.Visual:AddColorpicker("ATColor", { Title = "Цвет", Default = Color3.fromRGB(199,199,199), Callback = function(c) AT.Color = c; pcall(applyAT) end })
+
+Tabs.Visual:AddSection("Пресеты эффектов")
+Tabs.Visual:AddButton({
+    Title = "Красиво",
+    Callback = function()
+        BL.Intensity = 1.5; BL.Size = 24; BL.Threshold = 0.9
+        CC.Saturation = 0.3; CC.Contrast = 0.1
+        pcall(applyBL); pcall(applyCC)
+    end,
+})
+Tabs.Visual:AddButton({
+    Title = "Кинематограф",
+    Callback = function()
+        CC.Contrast = 0.3; CC.Saturation = -0.1; BR.Size = 4
+        BL.Intensity = 2; BL.Size = 32; BL.Threshold = 0.7
+        pcall(applyCC); pcall(applyBR); pcall(applyBL)
+    end,
+})
+Tabs.Visual:AddButton({
+    Title = "Убрать всё",
+    Callback = function()
+        CC = { Brightness=0, Contrast=0, Saturation=0, TintColor=nil }
+        BL = { Intensity=nil, Size=nil, Threshold=nil }
+        SR = { Intensity=nil, Spread=nil }
+        BR = { Size=nil }
+        AT = { Density=nil, Haze=nil, Glare=nil, Color=nil }
+        resetEffects()
+    end,
+})
+
+-- ==================== AUTOTUNE ====================
+Tabs.Auto:AddSection("Автотюнинг")
+Tabs.Auto:AddParagraph({ Title = "Автотюнинг", Content = "Катайся на вилли 30 сек" })
+Tabs.Auto:AddSlider("AutoTuneDur", {
+    Title = "Длительность", Default = 30, Min = 10, Max = 120, Rounding = 1,
+    Callback = function(v) AutoTune.Duration = roundInt(v) end,
+})
+Tabs.Auto:AddButton({
+    Title = "Начать самонастройку",
+    Callback = function()
+        AutoTune.Running = true
+        AutoTune.Samples = {}
+        AutoTune.StartTime = tick()
+        Fluent:Notify({ Title = "Автотюнинг", Content = "Катайся "..AutoTune.Duration.." сек", Duration = 4 })
+    end,
+})
+Tabs.Auto:AddButton({
+    Title = "Стоп",
+    Callback = function() AutoTune.Running = false end,
+})
+Tabs.Auto:AddButton({
+    Title = "Применить результат",
+    Callback = function()
+        local r = AutoTune.Result
+        if not r then
+            Fluent:Notify({ Title = "Автотюнинг", Content = "Сначала прогони настройку", Duration = 3 })
+            return
+        end
+        AW.TARGET = roundInt(r.target)
+        AW.OVER = roundInt(r.over)
+        AW.PULSE_MAX = round2(r.pulseMax)
+        AW.KICK_TIME = round2(r.kickTime)
+        if Options.AWTarget then Options.AWTarget:SetValue(AW.TARGET) end
+        if Options.AWOver then Options.AWOver:SetValue(AW.OVER) end
+        if Options.AWPulseMax then Options.AWPulseMax:SetValue(AW.PULSE_MAX) end
+        if Options.AWKick then Options.AWKick:SetValue(AW.KICK_TIME) end
+        Fluent:Notify({ Title = "Автотюнинг", Content = string.format("T=%d O=%d", AW.TARGET, AW.OVER), Duration = 5 })
+    end,
+})
+Tabs.Auto:AddSection("Обучение из движений")
+Tabs.Auto:AddButton({
+    Title = "Начать обучение",
+    Callback = function()
+        ML.Running = true; ML.Samples = {}
+        Fluent:Notify({ Title = "ML", Content = "Делай вилли сам", Duration = 4 })
+    end,
+})
+Tabs.Auto:AddButton({
+    Title = "Стоп и применить",
+    Callback = function()
+        ML.Running = false
+        if #ML.Samples < 30 then
+            Fluent:Notify({ Title = "ML", Content = "Мало данных", Duration = 3 })
+            return
+        end
+        local arr = {}
+        for _, s in ipairs(ML.Samples) do table.insert(arr, safeNum(s.pitch, 0)) end
+        table.sort(arr)
+        local idx90 = math.max(1, math.floor(#arr * 0.9))
+        local idx75 = math.max(1, math.floor(#arr * 0.75))
+        AW.TARGET = roundInt(arr[idx75])
+        AW.OVER = roundInt(arr[idx90] * 1.05)
+        if Options.AWTarget then Options.AWTarget:SetValue(AW.TARGET) end
+        if Options.AWOver then Options.AWOver:SetValue(AW.OVER) end
+        Fluent:Notify({ Title = "ML", Content = string.format("T=%d O=%d", AW.TARGET, AW.OVER), Duration = 5 })
+    end,
+})
+
+-- ==================== REPLAY ====================
+Tabs.Replay:AddSection("Реплей")
+Tabs.Replay:AddInput("ReplayName", {
+    Title = "Имя записи", Default = "clip", Placeholder = "clip", Finished = false,
+    Callback = function(v) Replay._name = tostring(v or "clip") end,
+})
+Tabs.Replay:AddToggle("RecordAW", {
+    Title = "Писать импульсы AW", Default = false,
+    Callback = function(v) Replay.RecordAW = v end,
+})
+
+Tabs.Replay:AddButton({
+    Title = "Начать запись",
+    Callback = function()
+        Replay.Recording = true
+        Replay.Playing = false
+        Replay.Buffer = {}
+        Replay.StartTime = tick()
+        Replay.LastW, Replay.LastS, Replay.LastZ = false, false, false
+        Replay.LastA, Replay.LastD = false, false
+        Replay.LastCtrl, Replay.LastQ, Replay.LastE = false, false, false
+        Replay.LastRecTime = 0
+        Fluent:Notify({ Title = "Реплей", Content = "Запись пошла!", Duration = 3 })
+    end,
+})
+Tabs.Replay:AddButton({
+    Title = "Остановить",
+    Callback = function()
+        Replay.Recording = false
+        local wc, ac, dc, ctrlc, qc, ec, zc = 0, 0, 0, 0, 0, 0, 0
+        for _, e in ipairs(Replay.Buffer) do
+            if e.w == 1 then wc = wc + 1 end
+            if (e.a or 0) == 1 then ac = ac + 1 end
+            if (e.d or 0) == 1 then dc = dc + 1 end
+            if (e.c or 0) == 1 then ctrlc = ctrlc + 1 end
+            if (e.q or 0) == 1 then qc = qc + 1 end
+            if (e.e or 0) == 1 then ec = ec + 1 end
+            if (e.zt or 0) == 1 then zc = zc + 1 end
+        end
+        local dur = 0
+        if #Replay.Buffer > 0 then dur = safeNum(Replay.Buffer[#Replay.Buffer].t, 0) / 1000 end
+        Fluent:Notify({
+            Title = "Реплей",
+            Content = string.format("Pts:%d W:%d A:%d D:%d C:%d Q:%d E:%d Z:%d %.1fs",
+                #Replay.Buffer, wc, ac, dc, ctrlc, qc, ec, zc, dur),
+            Duration = 7,
+        })
+    end,
+})
+Tabs.Replay:AddButton({
+    Title = "Сохранить",
+    Callback = function()
+        if #Replay.Buffer < 2 then
+            Fluent:Notify({ Title = "Реплей", Content = "Пустая запись", Duration = 3 })
+            return
+        end
+        local ok, data = pcall(function() return game:GetService("HttpService"):JSONEncode(Replay.Buffer) end)
+        if not ok then return end
+        pcall(function() writefile(CONFIG_FOLDER .. "/replay_" .. (Replay._name or "clip") .. ".json", data) end)
+        Fluent:Notify({ Title = "Реплей", Content = "Сохранено: "..(Replay._name or "clip"), Duration = 3 })
+    end,
+})
+Tabs.Replay:AddSection("Воспроизведение")
+Tabs.Replay:AddButton({
+    Title = "Воспроизвести",
+    Callback = function()
+        if #Replay.Buffer < 2 then
+            Fluent:Notify({ Title = "Реплей", Content = "Нет записи", Duration = 3 })
+            return
+        end
+        wSent, sSent, aSent, dSent, qSent, eSent = false, false, false, false, false, false
+        ctrlVirt = false
+        pIsDown = false
+        zSent = false
+        for _, k in ipairs({Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.A, Enum.KeyCode.D, Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.LeftControl, Enum.KeyCode.Z, AW.PKey}) do
+            VIM:SendKeyEvent(false, k, false, game)
+        end
+        Replay.Playing = true
+        Replay.PlayStartTime = tick()
+        Replay._playIdx = 1
+        Fluent:Notify({ Title = "Реплей", Content = "Играю "..#Replay.Buffer.." точек", Duration = 3 })
+    end,
+})
+Tabs.Replay:AddButton({
+    Title = "Стоп воспроизведение",
+    Callback = function()
+        Replay.Playing = false
+        sendW(false); sendS(false); sendA(false); sendD(false)
+        sendQ(false); sendE(false); sendCtrl(false); setP(false)
+        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+    end,
+})
+Tabs.Replay:AddButton({
+    Title = "Загрузить сохранённую",
+    Callback = function()
+        local path = CONFIG_FOLDER .. "/replay_" .. (Replay._name or "clip") .. ".json"
+        if not isfile(path) then
+            Fluent:Notify({ Title = "Реплей", Content = "Файл не найден", Duration = 3 })
+            return
+        end
+        local ok, data = pcall(readfile, path)
+        if not ok then return end
+        local dok, buf = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
+        if not dok or type(buf) ~= "table" then return end
+        Replay.Buffer = buf
+        Fluent:Notify({ Title = "Реплей", Content = "Загружено "..#buf.." точек", Duration = 4 })
+    end,
+})
+-- ==================== CONFIG ====================
+local cfgNameInput = "default"
+local visCfgName = "visual_default"
+
+local function listFiles(folder)
+    local out = {}
+    local ok, files = pcall(listfiles, folder)
+    if not ok or not files then return { "—" } end
+    for _, path in ipairs(files) do
+        local name = path:match("([^/\\]+)%.json$")
+        if name then table.insert(out, name) end
+    end
+    if #out == 0 then return { "—" } end
+    return out
+end
+
+local function buildMainConfig()
+    return {
+        VehicleSpeed = VehicleSpeed, BoostKeybind = BoostBindState.value.Name,
+        Theme = currentTheme,
+        AW = {
+            Enabled=AW.Enabled, TARGET=AW.TARGET, FALL_SPD=AW.FALL_SPD, RISE_SPD=AW.RISE_SPD,
+            PULSE_MIN=AW.PULSE_MIN, PULSE_MAX=AW.PULSE_MAX, SMOOTH=AW.SMOOTH, OVER=AW.OVER,
+            KICK_TIME=AW.KICK_TIME, Cruise=AW.Cruise, PEnabled=AW.PEnabled,
+            PFrom=AW.PFrom, PTo=AW.PTo,
+        },
+    }
+end
+
+local function buildVisualConfig()
+    return {
+        HUD = {
+            Enabled=HUD.Enabled, Size=HUD.Size, X=HUD.X, Y=HUD.Y, ShowSpeed=HUD.ShowSpeed,
+            SpeedUnit=HUD.SpeedUnit,
+            BgTransparency=HUD.BgTransparency,
+            Accent=HUD.Accent and {HUD.Accent.R, HUD.Accent.G, HUD.Accent.B} or nil,
+            BgColor=HUD.BgColor and {HUD.BgColor.R, HUD.BgColor.G, HUD.BgColor.B} or nil,
+        },
+        Trail = {
+            Enabled=TrailCfg.Enabled, Lifetime=TrailCfg.Lifetime,
+            Transparency=TrailCfg.Transparency, Brightness=TrailCfg.Brightness,
+            OffsetX=TrailCfg.OffsetX, OffsetY=TrailCfg.OffsetY, OffsetZ=TrailCfg.OffsetZ,
+            Mode=TrailCfg.Mode, ManualPath=TrailCfg.ManualPath,
+            FlatHeight=TrailCfg.FlatHeight, FlatWidth=TrailCfg.FlatWidth,
+            FlatRotation=TrailCfg.FlatRotation,
+            FlatOffsetX=TrailCfg.FlatOffsetX, FlatOffsetZ=TrailCfg.FlatOffsetZ,
+            Color1={TrailCfg.Color1.R, TrailCfg.Color1.G, TrailCfg.Color1.B},
+            Color2={TrailCfg.Color2.R, TrailCfg.Color2.G, TrailCfg.Color2.B},
+        },
+        CC = { Brightness=CC.Brightness, Contrast=CC.Contrast, Saturation=CC.Saturation,
+               TintColor=CC.TintColor and {CC.TintColor.R, CC.TintColor.G, CC.TintColor.B} or nil },
+        BL = { Intensity=BL.Intensity, Size=BL.Size, Threshold=BL.Threshold },
+        SR = { Intensity=SR.Intensity, Spread=SR.Spread },
+        BR = { Size=BR.Size },
+        AT = { Density=AT.Density, Haze=AT.Haze, Glare=AT.Glare,
+               Color=AT.Color and {AT.Color.R, AT.Color.G, AT.Color.B} or nil },
+    }
+end
+
+local function applyMainConfig(cfg)
+    if type(cfg) ~= "table" then return end
+    if cfg.VehicleSpeed then VehicleSpeed = safeNum(cfg.VehicleSpeed, 50) end
+    if cfg.AW then for k, v in pairs(cfg.AW) do AW[k] = v end end
+    if cfg.BoostKeybind then
+        local keyName = cfg.BoostKeybind
+        for _, k in ipairs(Enum.KeyCode:GetEnumItems()) do
+            if k.Name == keyName then
+                BoostKeybind = k
+                BoostBindState.value = k
+                break
+            end
+        end
+    end
+    if cfg.Theme and ThemeColors[cfg.Theme] then
+        currentTheme = cfg.Theme
+        saveThemeToFile(cfg.Theme)
+        pcall(function() Fluent:SetTheme(cfg.Theme) end)
+        task.wait(0.05)
+        applyHUDColors()
+    end
+end
+
+local function applyVisualConfig(cfg)
+    if type(cfg) ~= "table" then return end
+    if cfg.HUD then
+        for k, v in pairs(cfg.HUD) do
+            if k == "Accent" and type(v) == "table" then HUD.Accent = Color3.new(unpack(v))
+            elseif k == "BgColor" and type(v) == "table" then HUD.BgColor = Color3.new(unpack(v))
+            else HUD[k] = v end
+        end
+        if hudFrame then hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y) end
+        if hudShadow then hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72) end
+        if hudLabel then hudLabel.TextSize = HUD.Size end
+        if hudFrame then hudFrame.Visible = HUD.Enabled end
+        if hudShadow then hudShadow.Visible = HUD.Enabled end
+        applyHUDColors()
+    end
+    if cfg.Trail then
+        TrailCfg.Enabled = cfg.Trail.Enabled or false
+        TrailCfg.Lifetime = safeNum(cfg.Trail.Lifetime, 0.6)
+        TrailCfg.Transparency = safeNum(cfg.Trail.Transparency, 0.2)
+        TrailCfg.Brightness = safeNum(cfg.Trail.Brightness, 0.6)
+        TrailCfg.OffsetX = safeNum(cfg.Trail.OffsetX, 0)
+        TrailCfg.OffsetY = safeNum(cfg.Trail.OffsetY, 0)
+        TrailCfg.OffsetZ = safeNum(cfg.Trail.OffsetZ, 0)
+        TrailCfg.Mode = cfg.Trail.Mode or "auto"
+        TrailCfg.ManualPath = cfg.Trail.ManualPath or ""
+        TrailCfg.FlatHeight = safeNum(cfg.Trail.FlatHeight, 0.05)
+        TrailCfg.FlatWidth = safeNum(cfg.Trail.FlatWidth, 1.5)
+        TrailCfg.FlatRotation = safeNum(cfg.Trail.FlatRotation, 0)
+        TrailCfg.FlatOffsetX = safeNum(cfg.Trail.FlatOffsetX, 0)
+        TrailCfg.FlatOffsetZ = safeNum(cfg.Trail.FlatOffsetZ, 0)
+        if cfg.Trail.Color1 then TrailCfg.Color1 = Color3.new(unpack(cfg.Trail.Color1)) end
+        if cfg.Trail.Color2 then TrailCfg.Color2 = Color3.new(unpack(cfg.Trail.Color2)) end
+        destroyTrail(); destroyFlatTrail()
+        if TrailCfg.Enabled then
+            if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
+        end
+    end
+    if cfg.CC then
+        CC.Brightness = safeNum(cfg.CC.Brightness, 0)
+        CC.Contrast = safeNum(cfg.CC.Contrast, 0)
+        CC.Saturation = safeNum(cfg.CC.Saturation, 0)
+        if cfg.CC.TintColor then CC.TintColor = Color3.new(unpack(cfg.CC.TintColor)) end
+        pcall(applyCC)
+    end
+    if cfg.BL then
+        BL.Intensity = cfg.BL.Intensity; BL.Size = cfg.BL.Size; BL.Threshold = cfg.BL.Threshold
+        pcall(applyBL)
+    end
+    if cfg.SR then SR.Intensity = cfg.SR.Intensity; SR.Spread = cfg.SR.Spread; pcall(applySR) end
+    if cfg.BR then BR.Size = cfg.BR.Size; pcall(applyBR) end
+    if cfg.AT then
+        AT.Density = cfg.AT.Density; AT.Haze = cfg.AT.Haze; AT.Glare = cfg.AT.Glare
+        if cfg.AT.Color then AT.Color = Color3.new(unpack(cfg.AT.Color)) end
+        pcall(applyAT)
+    end
+end
+
+Tabs.Config:AddSection("Основной конфиг")
+Tabs.Config:AddInput("CfgName", {
+    Title = "Имя конфига", Default = "default", Placeholder = "myconfig", Finished = false,
+    Callback = function(v) cfgNameInput = tostring(v or "default") end,
+})
+Tabs.Config:AddButton({
+    Title = "Сохранить",
+    Callback = function()
+        local ok, encoded = pcall(function() return game:GetService("HttpService"):JSONEncode(buildMainConfig()) end)
+        if not ok then return end
+        pcall(function() writefile(CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json", encoded) end)
+        Fluent:Notify({ Title = "Конфиг", Content = "Сохранено: "..cfgNameInput, Duration = 3 })
+    end,
+})
+Tabs.Config:AddDropdown("CfgList", {
+    Title = "Configs", Values = listFiles(CONFIG_FOLDER), Default = 1, Multi = false,
+    Callback = function(v) if type(v) == "string" and v ~= "—" then cfgNameInput = v end end,
+})
+Tabs.Config:AddButton({
+    Title = "Загрузить",
+    Callback = function()
+        if cfgNameInput == "—" or cfgNameInput == "" then return end
+        local path = CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json"
+        if not isfile(path) then
+            Fluent:Notify({ Title = "Конфиг", Content = "Не найден", Duration = 3 })
+            return
+        end
+        local ok, data = pcall(readfile, path)
+        if not ok then return end
+        local dok, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
+        if not dok then return end
+        applyMainConfig(cfg)
+        Fluent:Notify({ Title = "Конфиг", Content = "Загружено: "..cfgNameInput, Duration = 3 })
+    end,
+})
+Tabs.Config:AddButton({
+    Title = "Обновить список",
+    Callback = function()
+        if Options.CfgList then Options.CfgList:SetValues(listFiles(CONFIG_FOLDER)) end
+    end,
+})
+Tabs.Config:AddButton({
+    Title = "Удалить",
+    Callback = function()
+        local path = CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json"
+        if isfile(path) then pcall(delfile, path) end
+        if Options.CfgList then Options.CfgList:SetValues(listFiles(CONFIG_FOLDER)) end
+    end,
+})
+
+Tabs.Config:AddSection("Конфиг визуала")
+Tabs.Config:AddInput("VisCfgName", {
+    Title = "Имя конфига", Default = "visual_default", Placeholder = "myvisual", Finished = false,
+    Callback = function(v) visCfgName = tostring(v or "visual_default") end,
+})
+Tabs.Config:AddButton({
+    Title = "Сохранить (только визуал)",
+    Callback = function()
+        local ok, encoded = pcall(function() return game:GetService("HttpService"):JSONEncode(buildVisualConfig()) end)
+        if not ok then return end
+        pcall(function() writefile(VISUAL_FOLDER .. "/" .. visCfgName .. ".json", encoded) end)
+        Fluent:Notify({ Title = "Visual", Content = visCfgName, Duration = 3 })
+    end,
+})
+Tabs.Config:AddDropdown("VisCfgList", {
+    Title = "Visual configs", Values = listFiles(VISUAL_FOLDER), Default = 1, Multi = false,
+    Callback = function(v) if type(v) == "string" and v ~= "—" then visCfgName = v end end,
+})
+Tabs.Config:AddButton({
+    Title = "Загрузить (только визуал)",
+    Callback = function()
+        if visCfgName == "—" or visCfgName == "" then return end
+        local path = VISUAL_FOLDER .. "/" .. visCfgName .. ".json"
+        if not isfile(path) then
+            Fluent:Notify({ Title = "Visual", Content = "Не найден", Duration = 3 })
+            return
+        end
+        local ok, data = pcall(readfile, path)
+        if not ok then return end
+        local dok, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
+        if not dok then return end
+        applyVisualConfig(cfg)
+        Fluent:Notify({ Title = "Visual", Content = visCfgName, Duration = 3 })
+    end,
+})
+Tabs.Config:AddButton({
+    Title = "Обновить список (visual)",
+    Callback = function()
+        if Options.VisCfgList then Options.VisCfgList:SetValues(listFiles(VISUAL_FOLDER)) end
+    end,
+})
+Tabs.Config:AddButton({
+    Title = "Удалить (visual)",
+    Callback = function()
+        local path = VISUAL_FOLDER .. "/" .. visCfgName .. ".json"
+        if isfile(path) then pcall(delfile, path) end
+        if Options.VisCfgList then Options.VisCfgList:SetValues(listFiles(VISUAL_FOLDER)) end
+    end,
+})
+
+-- ==================== MISC ====================
+Tabs.Misc:AddSection("Тема интерфейса")
+Tabs.Misc:AddParagraph({
+    Title = "Тема интерфейса",
+    Content = "Тема применится после перезапуска скрипта (сохраняется автоматически)"
+})
+Tabs.Misc:AddDropdown("ThemeSelect", {
+    Title = "Выбери тему",
+    Values = {"Amethyst", "Dark", "Darker", "Light", "Aqua", "Rose", "Mint", "Sea", "Sunset", "CottonCandy", "Rainbow", "Blood", "Ocean", "Pink", "Peach"},
+    Default = currentTheme,
+    Multi = false,
+    Callback = function(v)
+        if not ThemeColors[v] then
+            Fluent:Notify({ Title = "Theme", Content = "Не найдена: "..tostring(v), Duration = 3 })
+            return
+        end
+        currentTheme = v
+        saveThemeToFile(v)
+        pcall(function() Fluent:SetTheme(v) end)
+        task.wait(0.05)
+        applyHUDColors()
+        Fluent:Notify({
+            Title = "Theme",
+            Content = v.." — перезапусти скрипт, если цвета UI не поменялись",
+            Duration = 4,
+        })
+    end,
+})
+
+Tabs.Misc:AddSection("Язык / Language")
+Tabs.Misc:AddDropdown("LangSelect", {
+    Title = "Язык интерфейса",
+    Values = {"Русский", "English"},
+    Default = (Lang.current == "ru") and "Русский" or "English",
+    Multi = false,
+    Callback = function(v)
+        local newLang = (v == "English") and "en" or "ru"
+        if newLang ~= Lang.current then
+            Lang.current = newLang
+            Fluent:Notify({ Title = "Language", Content = "Перезапусти скрипт", Duration = 5 })
+        end
+    end,
+})
+
+Tabs.Misc:AddSection("Debug")
+Tabs.Misc:AddToggle("LogsOn", {
+    Title = "Печатать логи", Default = false,
+    Callback = function(v) AW.LOGS = v end,
+})
+Tabs.Misc:AddButton({
+    Title = "Сбросить настройки AW",
+    Callback = function()
+        AW.TARGET=75; AW.FALL_SPD=-3; AW.RISE_SPD=4
+        AW.PULSE_MIN=0.06; AW.PULSE_MAX=0.2
+        AW.SMOOTH=0.5; AW.OVER=77; AW.KICK_TIME=0.3
+        AW.Cruise=false; AW.PEnabled=true
+        AW.PFrom=82; AW.PTo=180
+        if Options.AWTarget then Options.AWTarget:SetValue(75) end
+        if Options.AWOver then Options.AWOver:SetValue(77) end
+        if Options.AWKick then Options.AWKick:SetValue(0.3) end
+        if Options.AWPFrom then Options.AWPFrom:SetValue(82) end
+        if Options.AWPTo then Options.AWPTo:SetValue(180) end
+        if Options.AWPulseMin then Options.AWPulseMin:SetValue(0.06) end
+        if Options.AWPulseMax then Options.AWPulseMax:SetValue(0.2) end
+        if Options.AWSmooth then Options.AWSmooth:SetValue(0.5) end
+    end,
+})
+
+-- ==================== Z TAP LISTENER ====================
+local zTapQueue = {}
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Z then
+        table.insert(zTapQueue, tick())
+    end
+end)
+
+-- ==================== БИНД BOOST ====================
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if UIS:GetFocusedTextBox() then return end
+    if input.KeyCode == BoostBindState.value then
+        pcall(BoostForward)
+    end
+end)
+
+-- ==================== ГЛАВНЫЙ ЦИКЛ ====================
 local prevPitch = 0
-local wTimer, wLockout, lastLog = 0, 0, 0
+local wTimer, wLockout = 0, 0
 local kickTimer, kickArmed = 0, false
 local cruiseRelease = 0
 
+local function pressZShort()
+    task.spawn(function()
+        VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+        task.wait(0.08)
+        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+    end)
+end
+
 RunService.Heartbeat:Connect(function(dt)
+    if TimeLock.Active then
+        local want = roundInt(TimeLock.Value)
+        if math.abs(safeNum(Lighting.ClockTime, 0) - want) > 0.3 then
+            pcall(function() Lighting.ClockTime = want end)
+        end
+    end
+
+    if flatPart and flatPart.Parent then pcall(updateFlatTrailPosition) end
+
+    -- HUD
+    if HUD.Enabled and hudFrame and hudLabel then
+        local char = LocalPlayer.Character
+        local hum  = char and char:FindFirstChildOfClass("Humanoid")
+        local seat = hum and hum.SeatPart
+        local pitch, speedMps = 0, 0
+        if seat and seat:IsA("BasePart") then
+            pitch = math.deg(math.asin(math.clamp(seat.CFrame.LookVector.Y, -1, 1)))
+            local vel = seat.AssemblyLinearVelocity
+            speedMps = math.floor(math.sqrt(vel.X^2 + vel.Z^2) + 0.5)
+        end
+        local lines = {}
+        local speedDisp = convertSpeed(speedMps)
+        local speedLabel = speedUnitLabel()
+        if Lang.current == "ru" then
+            table.insert(lines, string.format("Угол: %6.1f°", pitch))
+            if HUD.ShowSpeed then table.insert(lines, string.format("Скорость: %d %s", speedDisp, speedLabel)) end
+            table.insert(lines, "Состояние: "..(AW.State or "IDLE"))
+            local cs = ctrl and "ON" or (ctrlVirt and "VIRT" or "off")
+            table.insert(lines, "Ctrl: "..cs.."  AW: "..(AW.Enabled and "ON" or "off"))
+            if AutoTune.Running then table.insert(lines, string.format("Автотюн: %.1f/%d", tick()-AutoTune.StartTime, AutoTune.Duration)) end
+            if ML.Running then table.insert(lines, "ML: "..#ML.Samples) end
+            if Replay.Recording then table.insert(lines, "REC: "..#Replay.Buffer) end
+            if Replay.Playing then table.insert(lines, "REPLAY") end
+        else
+            table.insert(lines, string.format("Angle: %6.1f°", pitch))
+            if HUD.ShowSpeed then table.insert(lines, string.format("Speed: %d %s", speedDisp, speedLabel)) end
+            table.insert(lines, "State: "..(AW.State or "IDLE"))
+            local cs = ctrl and "ON" or (ctrlVirt and "VIRT" or "off")
+            table.insert(lines, "Ctrl: "..cs.."  AW: "..(AW.Enabled and "ON" or "off"))
+            if AutoTune.Running then table.insert(lines, string.format("Autotune: %.1f/%d", tick()-AutoTune.StartTime, AutoTune.Duration)) end
+            if ML.Running then table.insert(lines, "ML: "..#ML.Samples) end
+            if Replay.Recording then table.insert(lines, "REC: "..#Replay.Buffer) end
+            if Replay.Playing then table.insert(lines, "REPLAY") end
+        end
+        hudLabel.Text = table.concat(lines, "\n")
+    end
+
+    -- AutoTune
+    if AutoTune.Running then
+        if not isInVehicleSafe() then
+            AutoTune.Running = false
+        else
+            local pitch = getPitch()
+            if pitch then table.insert(AutoTune.Samples, { t=tick(), pitch=safeNum(pitch, 0) }) end
+            if tick() - AutoTune.StartTime >= safeNum(AutoTune.Duration, 30) then
+                AutoTune.Running = false
+                local arr = {}
+                for _, s in ipairs(AutoTune.Samples) do table.insert(arr, safeNum(s.pitch, 0)) end
+                table.sort(arr)
+                if #arr > 10 then
+                    local idxTop = math.max(1, math.floor(#arr * 0.95))
+                    local idxMid = math.max(1, math.floor(#arr * 0.7))
+                    AutoTune.Result = {
+                        target = safeNum(arr[idxMid], 32),
+                        over = math.min(160, safeNum(arr[idxTop], 45) * 1.05),
+                        pulseMax = 0.22,
+                        kickTime = math.min(1, safeNum(arr[idxMid], 32) / 80),
+                    }
+                    Fluent:Notify({ Title = "Автотюнинг", Content = "Готово! Нажми Применить", Duration = 4 })
+                end
+            end
+        end
+    end
+
+    -- ML
+    if ML.Running and isInVehicleSafe() then
+        local pitch = getPitch()
+        if pitch then table.insert(ML.Samples, { pitch = safeNum(pitch, 0) }) end
+    end
+
+    -- Replay запись
+    if Replay.Recording then
+        local now = tick() - Replay.StartTime
+        local physKeys = {}
+        local ok = pcall(function()
+            for _, k in ipairs(UIS:GetKeysPressed()) do
+                physKeys[k.KeyCode] = true
+            end
+        end)
+        local function isPhys(kc)
+            if ok then return physKeys[kc] == true end
+            return UIS:IsKeyDown(kc)
+        end
+        local recW = isPhys(Enum.KeyCode.W) or (Replay.RecordAW and wSent)
+        local recS = isPhys(Enum.KeyCode.S) or (Replay.RecordAW and sSent)
+        local recA = isPhys(Enum.KeyCode.A)
+        local recD = isPhys(Enum.KeyCode.D)
+        local recQ = isPhys(Enum.KeyCode.Q)
+        local recE = isPhys(Enum.KeyCode.E)
+        local recC = isPhys(Enum.KeyCode.LeftControl) or isPhys(Enum.KeyCode.RightControl)
+
+        while #zTapQueue > 0 do
+            local tTap = table.remove(zTapQueue, 1)
+            local tapOffset = tTap - Replay.StartTime
+            if tapOffset >= 0 then
+                table.insert(Replay.Buffer, {
+                    t = math.floor(tapOffset * 1000),
+                    zt = 1,
+                    w = 0, s = 0, a = 0, d = 0, q = 0, e = 0, c = 0,
+                })
+            end
+        end
+
+        local changed = recW ~= Replay.LastW or recS ~= Replay.LastS
+            or recA ~= Replay.LastA or recD ~= Replay.LastD
+            or recQ ~= Replay.LastQ or recE ~= Replay.LastE
+            or recC ~= Replay.LastCtrl
+
+        if changed and (now - safeNum(Replay.LastRecTime, 0) >= 0.05) then
+            Replay.LastRecTime = now
+            Replay.LastW, Replay.LastS = recW, recS
+            Replay.LastA, Replay.LastD = recA, recD
+            Replay.LastQ, Replay.LastE = recQ, recE
+            Replay.LastCtrl = recC
+            table.insert(Replay.Buffer, {
+                t = math.floor(now * 1000),
+                w = recW and 1 or 0, s = recS and 1 or 0,
+                a = recA and 1 or 0, d = recD and 1 or 0,
+                q = recQ and 1 or 0, e = recE and 1 or 0,
+                c = recC and 1 or 0,
+                zt = 0,
+            })
+        end
+    end
+
+    -- Replay воспроизведение
+    if Replay.Playing then
+        local now = (tick() - Replay.PlayStartTime) * 1000
+        local buf = Replay.Buffer
+        local idx = Replay._playIdx or 1
+        while idx <= #buf and safeNum(buf[idx].t, 0) <= now do
+            local e = buf[idx]
+            if (e.zt or 0) == 1 then
+                pressZShort()
+            else
+                sendW(e.w == 1); sendS(e.s == 1)
+                sendA((e.a or 0) == 1); sendD((e.d or 0) == 1)
+                sendQ((e.q or 0) == 1); sendE((e.e or 0) == 1)
+                sendCtrl((e.c or 0) == 1)
+            end
+            idx = idx + 1
+        end
+        Replay._playIdx = idx
+        if idx > #buf then
+            Replay.Playing = false
+            sendW(false); sendS(false); sendA(false); sendD(false)
+            sendQ(false); sendE(false); sendCtrl(false); setP(false)
+            Fluent:Notify({ Title = "Реплей", Content = "Конец", Duration = 2 })
+        end
+        return
+    end
+
+    -- Trail авто-привязка
+    if TrailCfg.Enabled and TrailCfg.Mode ~= "flat" then
+        if not trailInst then pcall(rebuildTrail) end
+        if trailInst and trailHostPart and not trailHostPart.Parent then pcall(rebuildTrail) end
+    end
+    if TrailCfg.Enabled and TrailCfg.Mode == "flat" and not flatPart then
+        pcall(rebuildFlatTrail)
+    end
+
+    -- AW логика
     if ctrl and not prevCtrl then
         kickArmed = true; kickTimer = 0; smoothPitch = 0
     end
@@ -482,38 +1760,42 @@ RunService.Heartbeat:Connect(function(dt)
     end
     prevCtrl = ctrl
 
-    if not AW.Enabled or not ctrl or not isInVehicle() then
+    if not AW.Enabled or not ctrl or not isInVehicleSafe() then
         sendW(false); sendS(false); setP(false)
         wTimer, wLockout = 0, 0
+        AW.State = "IDLE"
         return
     end
 
     local pitch = getPitch()
     if not pitch then sendW(false); sendS(false); setP(false) return end
-    local speed = (pitch - prevPitch) / math.max(dt, 0.001)
+    local speed = (safeNum(pitch,0) - safeNum(prevPitch,0)) / math.max(safeNum(dt, 0.001), 0.001)
     prevPitch = pitch
 
     if AW.PEnabled then
-        local lo, hi = math.min(AW.PFrom, AW.PTo), math.max(AW.PFrom, AW.PTo)
+        local lo, hi = math.min(safeNum(AW.PFrom,82), safeNum(AW.PTo,180)),
+                       math.max(safeNum(AW.PFrom,82), safeNum(AW.PTo,180))
         setP(pitch >= lo and pitch <= hi)
     else
         setP(false)
     end
 
-    if pitch >= AW.OVER then
+    if pitch >= safeNum(AW.OVER, 45) then
         sendW(false); sendS(true)
         wTimer, wLockout, kickTimer, kickArmed = 0, 0.15, 0, false
         cruiseRelease = 0.25
+        AW.State = "OVER"
         return
     end
 
     sendS(false)
 
     if kickArmed then
-        if kickTimer <= 0 then kickTimer = AW.KICK_TIME end
-        kickTimer = kickTimer - dt
+        AW.State = "KICK"
+        if kickTimer <= 0 then kickTimer = safeNum(AW.KICK_TIME, 0.3) end
+        kickTimer = kickTimer - safeNum(dt, 0.016)
         sendW(true)
-        if kickTimer <= 0 or pitch >= AW.TARGET then
+        if kickTimer <= 0 or pitch >= safeNum(AW.TARGET, 32) then
             kickArmed = false
             wLockout = 0.10
         end
@@ -521,12 +1803,13 @@ RunService.Heartbeat:Connect(function(dt)
     end
 
     if AW.Cruise then
+        AW.State = "CRUISE"
         if cruiseRelease > 0 then
-            cruiseRelease = cruiseRelease - dt
+            cruiseRelease = cruiseRelease - safeNum(dt, 0.016)
             sendW(false)
             return
         end
-        if pitch > AW.TARGET then
+        if pitch > safeNum(AW.TARGET, 32) then
             sendW(false); cruiseRelease = 0.08
         else
             sendW(true)
@@ -534,26 +1817,28 @@ RunService.Heartbeat:Connect(function(dt)
         return
     end
 
-    if wTimer > 0 then wTimer = wTimer - dt end
-    if wLockout > 0 then wLockout = wLockout - dt end
+    AW.State = "HOLD"
+    if wTimer > 0 then wTimer = wTimer - safeNum(dt, 0.016) end
+    if wLockout > 0 then wLockout = wLockout - safeNum(dt, 0.016) end
 
     if wTimer > 0 then
         sendW(true)
     else
         sendW(false)
-        if wLockout <= 0 and pitch < AW.TARGET and speed < AW.RISE_SPD then
-            local err  = AW.TARGET - pitch
+        if wLockout <= 0 and pitch < safeNum(AW.TARGET, 32) and speed < safeNum(AW.RISE_SPD, 4) then
+            local err  = safeNum(AW.TARGET, 32) - pitch
             local fall = math.max(0, -speed)
             local duty = math.clamp(err/20 + fall/30, 0, 1)
-            wTimer   = AW.PULSE_MIN + (AW.PULSE_MAX - AW.PULSE_MIN) * duty
+            wTimer = safeNum(AW.PULSE_MIN, 0.06)
+                + (safeNum(AW.PULSE_MAX, 0.2) - safeNum(AW.PULSE_MIN, 0.06)) * duty
             wLockout = 0.25
         end
     end
 end)
 
 -- ==================== ЗАГРУЗКА ====================
-Rayfield:Notify({
-    Title = "Sashamotyan Hub",
-    Content = "Загружено. Boost: Alt | Меню: K | Конфиги → вкладка",
+Fluent:Notify({
+    Title = T("win_title"),
+    Content = T("load_ok"),
     Duration = 5,
 })
