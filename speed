@@ -1,4 +1,4 @@
---[[ Sashamotyan Hub — Fluent v10 ]]
+--[[ Sashamotyan Hub — Fluent v11 ]]
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
@@ -7,6 +7,7 @@ local UIS        = game:GetService("UserInputService")
 local VIM        = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 local Lighting   = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Character   = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -160,11 +161,36 @@ local Replay   = {
     RecordAW=false,
 }
 
+-- ==================== СИНХРОНИЗАЦИЯ (переменные) ====================
+local SyncCfg = {
+    Enabled = false,
+    ServerURL = "http://26.X.X.X:3456",
+    Interval = 0.4,
+    ShowTrails = true,
+    ShowTags = true,
+    ShowMyInfo = false,
+    DrawDistance = 500,
+}
+
+local mySyncId
+do
+    local seed = tostring(math.random(100000, 999999))
+    local ok, saved = pcall(function() return readfile("SashamotyanHub_MyId.txt") end)
+    if ok and saved and #saved >= 6 then
+        mySyncId = saved
+    else
+        mySyncId = seed
+        pcall(function() writefile("SashamotyanHub_MyId.txt", mySyncId) end)
+    end
+end
+
+local RemotePlayers = {}
+local playerNameCache = {}
+
 local CONFIG_FOLDER = "SashamotyanHub_Configs"
 local VISUAL_FOLDER = "SashamotyanHub_Visual"
 if not isfolder(CONFIG_FOLDER) then makefolder(CONFIG_FOLDER) end
 if not isfolder(VISUAL_FOLDER) then makefolder(VISUAL_FOLDER) end
-
 -- ==================== HUD ====================
 local hudGui = Instance.new("ScreenGui")
 hudGui.Name = "SashamotyanHUD"
@@ -177,7 +203,7 @@ hudShadow.Name = "Shadow"
 hudShadow.Parent = hudGui
 hudShadow.AnchorPoint = Vector2.new(0.5, 0.5)
 hudShadow.BackgroundTransparency = 1
-hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72)
+hudShadow.Position = UDim2.new(0, 20 + 120, 0, 20 + 72)
 hudShadow.Size = UDim2.new(0, 280, 0, 190)
 hudShadow.ZIndex = 0
 hudShadow.Image = "rbxassetid://6014261993"
@@ -191,7 +217,7 @@ hudFrame.Name = "HudMain"
 hudFrame.Parent = hudGui
 hudFrame.BorderSizePixel = 0
 hudFrame.Size = UDim2.new(0, 240, 0, 145)
-hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y)
+hudFrame.Position = UDim2.new(0, 20, 0, 20)
 hudFrame.Active = true
 hudFrame.ZIndex = 1
 
@@ -254,7 +280,7 @@ local hudLabel = Instance.new("TextLabel")
 hudLabel.Parent = hudFrame
 hudLabel.BackgroundTransparency = 1
 hudLabel.Font = Enum.Font.Gotham
-hudLabel.TextSize = HUD.Size
+hudLabel.TextSize = 14
 hudLabel.TextXAlignment = Enum.TextXAlignment.Left
 hudLabel.TextYAlignment = Enum.TextYAlignment.Top
 hudLabel.Size = UDim2.new(1, -8, 1, -48)
@@ -281,6 +307,15 @@ local function applyHUDColors()
     hudDivider.BackgroundTransparency = 0.6
     hudLabel.TextColor3 = text
     hudAccentBar.BackgroundColor3 = accent
+
+    for _, r in pairs(RemotePlayers) do
+        if r.tag then
+            if r.tag.frame then r.tag.frame.BackgroundColor3 = tc.Dialog end
+            if r.tag.stroke then r.tag.stroke.Color = tc.Outline end
+            if r.tag.title then r.tag.title.TextColor3 = tc.Accent end
+            if r.tag.info then r.tag.info.TextColor3 = tc.Text end
+        end
+    end
 end
 
 applyHUDColors()
@@ -565,6 +600,310 @@ local function resetLighting()
         pcall(function() Lighting[k] = v end)
     end
 end
+
+-- ==================== СИНХРОНИЗАЦИЯ (функции) ====================
+local function findPlayerByName(name)
+    if playerNameCache[name] then
+        local plr = playerNameCache[name]
+        if plr and plr.Parent then return plr end
+        playerNameCache[name] = nil
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Name == name then
+            playerNameCache[name] = plr
+            return plr
+        end
+    end
+    return nil
+end
+
+local function sendMyData()
+    if not SyncCfg.Enabled then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    local seat = hum.SeatPart
+    local pitch, speed = 0, 0
+    if seat and seat:IsA("BasePart") then
+        pitch = math.deg(math.asin(math.clamp(seat.CFrame.LookVector.Y, -1, 1)))
+        local vel = seat.AssemblyLinearVelocity
+        speed = math.floor(math.sqrt(vel.X^2 + vel.Z^2) + 0.5)
+    end
+
+    local payload = {
+        id = mySyncId,
+        name = LocalPlayer.Name,
+        pitch = math.floor(pitch * 10) / 10,
+        speed = speed,
+        aw = AW.Enabled and (AW.State or "ON") or "OFF",
+        trail = TrailCfg.Enabled and 1 or 0,
+        trailMode = TrailCfg.Mode,
+        color1 = {math.floor(TrailCfg.Color1.R*255), math.floor(TrailCfg.Color1.G*255), math.floor(TrailCfg.Color1.B*255)},
+        color2 = {math.floor(TrailCfg.Color2.R*255), math.floor(TrailCfg.Color2.G*255), math.floor(TrailCfg.Color2.B*255)},
+        trailLifetime = TrailCfg.Lifetime,
+        trailWidth = TrailCfg.FlatWidth,
+        trailRotation = TrailCfg.FlatRotation,
+        trailOffsetY = TrailCfg.FlatHeight,
+    }
+
+    pcall(function()
+        request({
+            Url = SyncCfg.ServerURL .. "/update",
+            Method = "POST",
+            Body = HttpService:JSONEncode(payload),
+            Headers = { ["Content-Type"] = "application/json" }
+        })
+    end)
+end
+
+local function fetchAllData()
+    if not SyncCfg.Enabled then return {} end
+    local ok, body = pcall(function()
+        local res = request({
+            Url = SyncCfg.ServerURL .. "/players",
+            Method = "GET"
+        })
+        if res and res.Success then return res.Body end
+        return nil
+    end)
+    if not ok or type(body) ~= "string" then return {} end
+    local dok, all = pcall(function() return HttpService:JSONDecode(body) end)
+    if not dok or type(all) ~= "table" then return {} end
+    return all
+end
+
+local function createTag(plr, data)
+    local char = plr.Character
+    if not char then return nil end
+    local head = char:FindFirstChild("Head")
+    if not head then return nil end
+
+    local existing = head:FindFirstChild("SH_SyncTag")
+    if existing then existing:Destroy() end
+
+    local tc = ThemeColors[currentTheme] or ThemeColors.Amethyst
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "SH_SyncTag"
+    bb.Size = UDim2.new(0, 220, 0, 70)
+    bb.StudsOffset = Vector3.new(0, 3, 0)
+    bb.AlwaysOnTop = true
+    bb.Parent = head
+
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = tc.Dialog
+    frame.BackgroundTransparency = 0.15
+    frame.BorderSizePixel = 0
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.Parent = bb
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = tc.Outline
+    stroke.Thickness = 1
+    stroke.Transparency = 0.4
+    stroke.Parent = frame
+
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Name = "Title"
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextSize = 13
+    titleLbl.TextColor3 = tc.Accent
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.Size = UDim2.new(1, -16, 0, 18)
+    titleLbl.Position = UDim2.new(0, 8, 0, 6)
+    titleLbl.Text = plr.Name
+    titleLbl.Parent = frame
+
+    local infoLbl = Instance.new("TextLabel")
+    infoLbl.Name = "Info"
+    infoLbl.BackgroundTransparency = 1
+    infoLbl.Font = Enum.Font.Gotham
+    infoLbl.TextSize = 11
+    infoLbl.TextColor3 = tc.Text
+    infoLbl.TextXAlignment = Enum.TextXAlignment.Left
+    infoLbl.TextYAlignment = Enum.TextYAlignment.Top
+    infoLbl.Size = UDim2.new(1, -16, 1, -28)
+    infoLbl.Position = UDim2.new(0, 8, 0, 26)
+    infoLbl.Text = "..."
+    infoLbl.Parent = frame
+
+    return { gui = bb, title = titleLbl, info = infoLbl, frame = frame, stroke = stroke }
+end
+
+local function updateTag(tag, data, distance)
+    if not tag or not tag.info then return end
+    local dispSpeed
+    if HUD.SpeedUnit == "km/h" then dispSpeed = math.floor(data.speed * 0.28 * 3.6 + 0.5)
+    elseif HUD.SpeedUnit == "mph" then dispSpeed = math.floor(data.speed * 0.28 * 2.23694 + 0.5)
+    else dispSpeed = data.speed end
+
+    local lines = {
+        string.format("Угол: %.1f°", data.pitch),
+        string.format("Скорость: %d %s", dispSpeed, speedUnitLabel()),
+        string.format("AW: %s  |  %d studs", tostring(data.aw or "OFF"), math.floor(distance)),
+    }
+    tag.info.Text = table.concat(lines, "\n")
+end
+
+local function createRemoteTrail(plr, data)
+    local char = plr.Character
+    if not char then return nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    local existing = hrp:FindFirstChild("SH_SyncTrail")
+    if existing then existing:Destroy() end
+
+    local a0 = Instance.new("Attachment")
+    a0.Name = "SH_TrailA0"
+    a0.Parent = hrp
+
+    local a1 = Instance.new("Attachment")
+    a1.Name = "SH_TrailA1"
+    a1.Parent = hrp
+
+    local c1 = data.color1 or {160, 100, 255}
+    local c2 = data.color2 or {255, 100, 255}
+    local color1 = Color3.fromRGB(c1[1], c1[2], c1[3])
+    local color2 = Color3.fromRGB(c2[1], c2[2], c2[3])
+
+    local trail = Instance.new("Trail")
+    trail.Name = "SH_SyncTrail"
+    trail.Attachment0 = a0
+    trail.Attachment1 = a1
+    trail.Lifetime = data.trailLifetime or 0.6
+    trail.Color = ColorSequence.new(color1, color2)
+    trail.LightEmission = 0.6
+    trail.FaceCamera = true
+    trail.Parent = hrp
+
+    return { inst = trail, a0 = a0, a1 = a1 }
+end
+
+local function cleanupRemote(id)
+    local r = RemotePlayers[id]
+    if not r then return end
+    if r.tag and r.tag.gui then r.tag.gui:Destroy() end
+    if r.trail and r.trail.inst then r.trail.inst:Destroy() end
+    RemotePlayers[id] = nil
+end
+
+local syncLastSend = 0
+local syncLastFetch = 0
+
+local function syncTick()
+    if not SyncCfg.Enabled then return end
+    local now = tick()
+
+    if now - syncLastSend >= SyncCfg.Interval then
+        syncLastSend = now
+        task.spawn(sendMyData)
+    end
+
+    if now - syncLastFetch >= SyncCfg.Interval then
+        syncLastFetch = now
+        task.spawn(function()
+            local all = fetchAllData()
+            local seenIds = {}
+
+            for id, rawData in pairs(all) do
+                if id ~= mySyncId and type(rawData) == "table" and rawData.name and rawData.pitch then
+                    seenIds[id] = true
+                    local plr = findPlayerByName(rawData.name)
+
+                    if plr and plr.Character then
+                        local myChar = LocalPlayer.Character
+                        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                        local hisHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+                        local dist = 0
+                        if myHRP and hisHRP then
+                            dist = (myHRP.Position - hisHRP.Position).Magnitude
+                        end
+
+                        if dist <= SyncCfg.DrawDistance then
+                            local r = RemotePlayers[id]
+                            if not r then r = {}; RemotePlayers[id] = r end
+
+                            if SyncCfg.ShowTags then
+                                if not r.tag or not r.tag.gui or not r.tag.gui.Parent then
+                                    r.tag = createTag(plr, rawData)
+                                end
+                                if r.tag then updateTag(r.tag, rawData, dist) end
+                            else
+                                if r.tag and r.tag.gui then r.tag.gui:Destroy() r.tag = nil end
+                            end
+
+                            if SyncCfg.ShowTrails and rawData.trail == 1 then
+                                if not r.trail or not r.trail.inst or not r.trail.inst.Parent then
+                                    r.trail = createRemoteTrail(plr, rawData)
+                                else
+                                    r.trail.inst.Lifetime = rawData.trailLifetime or 0.6
+                                    local c1 = rawData.color1 or {160,100,255}
+                                    local c2 = rawData.color2 or {255,100,255}
+                                    r.trail.inst.Color = ColorSequence.new(
+                                        Color3.fromRGB(c1[1], c1[2], c1[3]),
+                                        Color3.fromRGB(c2[1], c2[2], c2[3])
+                                    )
+                                end
+                            else
+                                if r.trail and r.trail.inst then r.trail.inst:Destroy() r.trail = nil end
+                            end
+                        else
+                            if r then
+                                if r.tag and r.tag.gui then r.tag.gui:Destroy() r.tag = nil end
+                                if r.trail and r.trail.inst then r.trail.inst:Destroy() r.trail = nil end
+                            end
+                        end
+                    end
+                end
+            end
+
+            for id, _ in pairs(RemotePlayers) do
+                if not seenIds[id] then cleanupRemote(id) end
+            end
+        end)
+    end
+end
+
+-- ==================== АВТОСИНХРОН ====================
+RunService.Heartbeat:Connect(function()
+    pcall(syncTick)
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    for id, _ in pairs(RemotePlayers) do
+        local cached = playerNameCache[plr.Name]
+        if cached == plr then
+            cleanupRemote(id)
+            playerNameCache[plr.Name] = nil
+        end
+    end
+end)
+
+local function hookPlayerChar(plr)
+    plr.CharacterAdded:Connect(function()
+        for id, r in pairs(RemotePlayers) do
+            if r.tag and r.tag.gui then r.tag.gui:Destroy() end
+            if r.trail and r.trail.inst then r.trail.inst:Destroy() end
+            RemotePlayers[id] = nil
+        end
+    end)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then hookPlayerChar(plr) end
+end
+Players.PlayerAdded:Connect(function(plr)
+    if plr ~= LocalPlayer then hookPlayerChar(plr) end
+end)
 -- ==================== ЯЗЫК ====================
 local Lang = {
     current = "ru",
@@ -631,7 +970,7 @@ local Lang = {
             vis_c1 = "Цвет 1 (начало)", vis_c2 = "Цвет 2 (конец)",
             theme_section = "Тема интерфейса",
             theme_choose = "Выбери тему",
-            theme_note = "Тема применится после перезапуска скрипта (сохраняется автоматически)",
+            theme_note = "Тема применится после перезапуска скрипта",
         },
         en = {
             win_title = "Sashamotyan Hub", win_sub = "by sashamotyan",
@@ -695,7 +1034,7 @@ local Lang = {
             vis_c1 = "Color 1 (start)", vis_c2 = "Color 2 (end)",
             theme_section = "Interface theme",
             theme_choose = "Choose theme",
-            theme_note = "Theme applies on script restart (auto-saved)",
+            theme_note = "Theme applies on script restart",
         },
     },
 }
@@ -727,6 +1066,7 @@ local function buildUI()
         Replay  = Window:AddTab({ Title = T("tab_replay"), Icon = "video" }),
         Config  = Window:AddTab({ Title = T("tab_cfg"), Icon = "save" }),
         Misc    = Window:AddTab({ Title = T("tab_misc"), Icon = "settings" }),
+        Sync    = Window:AddTab({ Title = "Sync", Icon = "users" }),
     }
 
     -- ============ SPEED HACK ============
@@ -787,9 +1127,7 @@ local function buildUI()
         Values = {"studs/s", "km/h", "mph"},
         Default = "km/h",
         Multi = false,
-        Callback = function(v)
-            HUD.SpeedUnit = v
-        end,
+        Callback = function(v) HUD.SpeedUnit = v end,
     })
     Tabs.HUD:AddSlider("HUDSize", {
         Title = T("vis_size"), Default = 14, Min = 10, Max = 24, Rounding = 1,
@@ -849,8 +1187,7 @@ local function buildUI()
             Fluent:Notify({ Title = "HUD", Content = "Цвета сброшены к теме", Duration = 2 })
         end,
     })
-
-    -- ============ TRAIL ============
+        -- ============ TRAIL ============
     Tabs.Trail:AddSection(T("trail_title"))
     Tabs.Trail:AddToggle("TrailEnabled", {
         Title = T("vis_trail_en"), Default = false,
@@ -893,7 +1230,14 @@ local function buildUI()
             Fluent:Notify({ Title = T("vis_show_parts"), Content = "Console (F9) - "..#parts.." parts", Duration = 5 })
         end,
     })
-    Tabs.Trail:AddButton({ Title = T("vis_reattach"), Callback = function() pcall(function() if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end end) end })
+    Tabs.Trail:AddButton({
+        Title = T("vis_reattach"),
+        Callback = function()
+            pcall(function()
+                if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
+            end)
+        end,
+    })
 
     Tabs.Trail:AddSection(T("vis_shape"))
     Tabs.Trail:AddSlider("TrailLifetime", { Title = T("vis_lifetime"), Default = 0.6, Min = 0.1, Max = 3, Rounding = 2, Callback = function(v) TrailCfg.Lifetime = round2(v); updateTrailProps() end })
@@ -941,640 +1285,756 @@ local function buildUI()
     Tabs.Trail:AddSlider("TrailBright", { Title = T("vis_bright"), Default = 0.6, Min = 0, Max = 1, Rounding = 2, Callback = function(v) TrailCfg.Brightness = round2(v); updateTrailProps() end })
     Tabs.Trail:AddColorpicker("TrailCol1", { Title = T("vis_c1"), Default = Color3.fromRGB(160,100,255), Callback = function(c) TrailCfg.Color1 = c; updateTrailProps() end })
     Tabs.Trail:AddColorpicker("TrailCol2", { Title = T("vis_c2"), Default = Color3.fromRGB(255,100,255), Callback = function(c) TrailCfg.Color2 = c; updateTrailProps() end })
+
+    -- ============ VISUAL ============
+    Tabs.Visual:AddSection("Погода / время")
+    Tabs.Visual:AddSlider("LBr", {
+        Title = "Яркость", Default = 1, Min = 0, Max = 10, Rounding = 1,
+        Callback = function(v) Lighting.Brightness = safeNum(v, 1) end,
+    })
+    Tabs.Visual:AddSlider("LTime", {
+        Title = "Время суток", Default = math.floor(LightOrig.ClockTime + 0.5),
+        Min = 0, Max = 24, Rounding = 1,
+        Callback = function(v)
+            local n = roundInt(v)
+            TimeLock.Active = true
+            TimeLock.Value = n
+            Lighting.ClockTime = n
+        end,
+    })
+    Tabs.Visual:AddToggle("LTimeLock", {
+        Title = "Блокировать время", Default = false,
+        Callback = function(v) TimeLock.Active = v end,
+    })
+    Tabs.Visual:AddSlider("LExp", {
+        Title = "Экспозиция", Default = 0, Min = -3, Max = 3, Rounding = 2,
+        Callback = function(v) Lighting.ExposureCompensation = round2(v) end,
+    })
+
+    Tabs.Visual:AddSection("Тени и свет")
+    Tabs.Visual:AddToggle("LShadows", { Title = "Глобальные тени", Default = LightOrig.GlobalShadows, Callback = function(v) Lighting.GlobalShadows = v end })
+    Tabs.Visual:AddSlider("LAmb", {
+        Title = "Ambient яркость", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
+        Callback = function(v)
+            local n = math.clamp(round2(v), 0, 1)
+            Lighting.Ambient = Color3.new(n, n, n)
+            Lighting.OutdoorAmbient = Color3.new(n, n, n)
+        end,
+    })
+    Tabs.Visual:AddSlider("LDiff", {
+        Title = "Diffuse", Default = 0, Min = 0, Max = 3, Rounding = 1,
+        Callback = function(v) Lighting.EnvironmentDiffuseScale = roundInt(v) end,
+    })
+    Tabs.Visual:AddSlider("LSpec", {
+        Title = "Specular", Default = 0, Min = 0, Max = 3, Rounding = 1,
+        Callback = function(v) Lighting.EnvironmentSpecularScale = roundInt(v) end,
+    })
+
+    Tabs.Visual:AddSection("Пресеты времени")
+    Tabs.Visual:AddButton({
+        Title = "Рассвет (6:00)",
+        Callback = function() TimeLock.Active = true; TimeLock.Value = 6; Lighting.ClockTime = 6; Options.LTime:SetValue(6) end,
+    })
+    Tabs.Visual:AddButton({
+        Title = "День (12:00)",
+        Callback = function() TimeLock.Active = true; TimeLock.Value = 12; Lighting.ClockTime = 12; Options.LTime:SetValue(12) end,
+    })
+    Tabs.Visual:AddButton({
+        Title = "Закат (18:00)",
+        Callback = function() TimeLock.Active = true; TimeLock.Value = 18; Lighting.ClockTime = 18; Options.LTime:SetValue(18) end,
+    })
+    Tabs.Visual:AddButton({
+        Title = "Ночь (0:00)",
+        Callback = function() TimeLock.Active = true; TimeLock.Value = 0; Lighting.ClockTime = 0; Options.LTime:SetValue(0) end,
+    })
+    Tabs.Visual:AddButton({
+        Title = "Сбросить освещение",
+        Callback = function()
+            resetLighting()
+            Fluent:Notify({ Title = "Lighting", Content = "Reset", Duration = 3 })
+        end,
+    })
+
+    Tabs.Visual:AddSection("Color Correction")
+    Tabs.Visual:AddSlider("CCBr", { Title = "Яркость", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Brightness = round2(v); pcall(applyCC) end })
+    Tabs.Visual:AddSlider("CCCon", { Title = "Контраст", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Contrast = round2(v); pcall(applyCC) end })
+    Tabs.Visual:AddSlider("CCSat", { Title = "Насыщенность", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Saturation = round2(v); pcall(applyCC) end })
+    Tabs.Visual:AddColorpicker("CCTint", { Title = "Тинт", Default = Color3.fromRGB(255,255,255), Callback = function(c) CC.TintColor = c; pcall(applyCC) end })
+
+    Tabs.Visual:AddSection("Bloom (свечение)")
+    Tabs.Visual:AddSlider("BLInt", { Title = "Интенсивность", Default = 0, Min = 0, Max = 5, Rounding = 2, Callback = function(v) local n = round2(v); BL.Intensity = n > 0.05 and n or nil; pcall(applyBL) end })
+    Tabs.Visual:AddSlider("BLSize", { Title = "Размер", Default = 0, Min = 0, Max = 56, Rounding = 1, Callback = function(v) local n = roundInt(v); BL.Size = n > 1 and n or nil; pcall(applyBL) end })
+    Tabs.Visual:AddSlider("BLThr", { Title = "Порог", Default = 0, Min = 0, Max = 5, Rounding = 2, Callback = function(v) local n = round2(v); BL.Threshold = n > 0.05 and n or nil; pcall(applyBL) end })
+
+    Tabs.Visual:AddSection("Sun Rays (лучи солнца)")
+    Tabs.Visual:AddSlider("SRInt", { Title = "Интенсивность", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); SR.Intensity = n > 0.02 and n or nil; pcall(applySR) end })
+    Tabs.Visual:AddSlider("SRSpread", { Title = "Разброс", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); SR.Spread = n > 0.02 and n or nil; pcall(applySR) end })
+
+    Tabs.Visual:AddSection("Blur (размытие)")
+    Tabs.Visual:AddSlider("BRSize", { Title = "Размер", Default = 0, Min = 0, Max = 56, Rounding = 1, Callback = function(v) local n = roundInt(v); BR.Size = n > 1 and n or nil; pcall(applyBR) end })
+
+    Tabs.Visual:AddSection("Atmosphere (атмосфера)")
+    Tabs.Visual:AddSlider("ATDen", { Title = "Плотность", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); AT.Density = n > 0.02 and n or nil; pcall(applyAT) end })
+    Tabs.Visual:AddSlider("ATHaze", { Title = "Дымка", Default = 0, Min = 0, Max = 10, Rounding = 2, Callback = function(v) local n = round2(v); AT.Haze = n > 0.05 and n or nil; pcall(applyAT) end })
+    Tabs.Visual:AddSlider("ATGlare", { Title = "Блик", Default = 0, Min = 0, Max = 10, Rounding = 2, Callback = function(v) local n = round2(v); AT.Glare = n > 0.05 and n or nil; pcall(applyAT) end })
+    Tabs.Visual:AddColorpicker("ATColor", { Title = "Цвет", Default = Color3.fromRGB(199,199,199), Callback = function(c) AT.Color = c; pcall(applyAT) end })
+
+    Tabs.Visual:AddSection("Пресеты эффектов")
+    Tabs.Visual:AddButton({
+        Title = "Красиво",
+        Callback = function()
+            BL.Intensity = 1.5; BL.Size = 24; BL.Threshold = 0.9
+            CC.Saturation = 0.3; CC.Contrast = 0.1
+            pcall(applyBL); pcall(applyCC)
+        end,
+    })
+    Tabs.Visual:AddButton({
+        Title = "Кинематограф",
+        Callback = function()
+            CC.Contrast = 0.3; CC.Saturation = -0.1; BR.Size = 4
+            BL.Intensity = 2; BL.Size = 32; BL.Threshold = 0.7
+            pcall(applyCC); pcall(applyBR); pcall(applyBL)
+        end,
+    })
+    Tabs.Visual:AddButton({
+        Title = "Убрать всё",
+        Callback = function()
+            CC = { Brightness=0, Contrast=0, Saturation=0, TintColor=nil }
+            BL = { Intensity=nil, Size=nil, Threshold=nil }
+            SR = { Intensity=nil, Spread=nil }
+            BR = { Size=nil }
+            AT = { Density=nil, Haze=nil, Glare=nil, Color=nil }
+            resetEffects()
+        end,
+    })
+
+    -- ============ AUTOTUNE ============
+    Tabs.Auto:AddSection("Автотюнинг")
+    Tabs.Auto:AddParagraph({ Title = "Автотюнинг", Content = "Катайся на вилли 30 сек" })
+    Tabs.Auto:AddSlider("AutoTuneDur", {
+        Title = "Длительность", Default = 30, Min = 10, Max = 120, Rounding = 1,
+        Callback = function(v) AutoTune.Duration = roundInt(v) end,
+    })
+    Tabs.Auto:AddButton({
+        Title = "Начать самонастройку",
+        Callback = function()
+            AutoTune.Running = true
+            AutoTune.Samples = {}
+            AutoTune.StartTime = tick()
+            Fluent:Notify({ Title = "Автотюнинг", Content = "Катайся "..AutoTune.Duration.." сек", Duration = 4 })
+        end,
+    })
+    Tabs.Auto:AddButton({
+        Title = "Стоп",
+        Callback = function() AutoTune.Running = false end,
+    })
+    Tabs.Auto:AddButton({
+        Title = "Применить результат",
+        Callback = function()
+            local r = AutoTune.Result
+            if not r then
+                Fluent:Notify({ Title = "Автотюнинг", Content = "Сначала прогони настройку", Duration = 3 })
+                return
+            end
+            AW.TARGET = roundInt(r.target)
+            AW.OVER = roundInt(r.over)
+            AW.PULSE_MAX = round2(r.pulseMax)
+            AW.KICK_TIME = round2(r.kickTime)
+            if Options.AWTarget then Options.AWTarget:SetValue(AW.TARGET) end
+            if Options.AWOver then Options.AWOver:SetValue(AW.OVER) end
+            if Options.AWPulseMax then Options.AWPulseMax:SetValue(AW.PULSE_MAX) end
+            if Options.AWKick then Options.AWKick:SetValue(AW.KICK_TIME) end
+            Fluent:Notify({ Title = "Автотюнинг", Content = string.format("T=%d O=%d", AW.TARGET, AW.OVER), Duration = 5 })
+        end,
+    })
+    Tabs.Auto:AddSection("Обучение из движений")
+    Tabs.Auto:AddButton({
+        Title = "Начать обучение",
+        Callback = function()
+            ML.Running = true; ML.Samples = {}
+            Fluent:Notify({ Title = "ML", Content = "Делай вилли сам", Duration = 4 })
+        end,
+    })
+    Tabs.Auto:AddButton({
+        Title = "Стоп и применить",
+        Callback = function()
+            ML.Running = false
+            if #ML.Samples < 30 then
+                Fluent:Notify({ Title = "ML", Content = "Мало данных", Duration = 3 })
+                return
+            end
+            local arr = {}
+            for _, s in ipairs(ML.Samples) do table.insert(arr, safeNum(s.pitch, 0)) end
+            table.sort(arr)
+            local idx90 = math.max(1, math.floor(#arr * 0.9))
+            local idx75 = math.max(1, math.floor(#arr * 0.75))
+            AW.TARGET = roundInt(arr[idx75])
+            AW.OVER = roundInt(arr[idx90] * 1.05)
+            if Options.AWTarget then Options.AWTarget:SetValue(AW.TARGET) end
+            if Options.AWOver then Options.AWOver:SetValue(AW.OVER) end
+            Fluent:Notify({ Title = "ML", Content = string.format("T=%d O=%d", AW.TARGET, AW.OVER), Duration = 5 })
+        end,
+    })
+
+    -- ============ REPLAY ============
+    Tabs.Replay:AddSection("Реплей")
+    Tabs.Replay:AddInput("ReplayName", {
+        Title = "Имя записи", Default = "clip", Placeholder = "clip", Finished = false,
+        Callback = function(v) Replay._name = tostring(v or "clip") end,
+    })
+    Tabs.Replay:AddToggle("RecordAW", {
+        Title = "Писать импульсы AW", Default = false,
+        Callback = function(v) Replay.RecordAW = v end,
+    })
+
+    Tabs.Replay:AddButton({
+        Title = "Начать запись",
+        Callback = function()
+            Replay.Recording = true
+            Replay.Playing = false
+            Replay.Buffer = {}
+            Replay.StartTime = tick()
+            Replay.LastW, Replay.LastS, Replay.LastZ = false, false, false
+            Replay.LastA, Replay.LastD = false, false
+            Replay.LastCtrl, Replay.LastQ, Replay.LastE = false, false, false
+            Replay.LastRecTime = 0
+            Fluent:Notify({ Title = "Реплей", Content = "Запись пошла!", Duration = 3 })
+        end,
+    })
+    Tabs.Replay:AddButton({
+        Title = "Остановить",
+        Callback = function()
+            Replay.Recording = false
+            local wc, ac, dc, ctrlc, qc, ec, zc = 0, 0, 0, 0, 0, 0, 0
+            for _, e in ipairs(Replay.Buffer) do
+                if e.w == 1 then wc = wc + 1 end
+                if (e.a or 0) == 1 then ac = ac + 1 end
+                if (e.d or 0) == 1 then dc = dc + 1 end
+                if (e.c or 0) == 1 then ctrlc = ctrlc + 1 end
+                if (e.q or 0) == 1 then qc = qc + 1 end
+                if (e.e or 0) == 1 then ec = ec + 1 end
+                if (e.zt or 0) == 1 then zc = zc + 1 end
+            end
+            local dur = 0
+            if #Replay.Buffer > 0 then dur = safeNum(Replay.Buffer[#Replay.Buffer].t, 0) / 1000 end
+            Fluent:Notify({
+                Title = "Реплей",
+                Content = string.format("Pts:%d W:%d A:%d D:%d C:%d Q:%d E:%d Z:%d %.1fs",
+                    #Replay.Buffer, wc, ac, dc, ctrlc, qc, ec, zc, dur),
+                Duration = 7,
+            })
+        end,
+    })
+    Tabs.Replay:AddButton({
+        Title = "Сохранить",
+        Callback = function()
+            if #Replay.Buffer < 2 then
+                Fluent:Notify({ Title = "Реплей", Content = "Пустая запись", Duration = 3 })
+                return
+            end
+            local ok, data = pcall(function() return HttpService:JSONEncode(Replay.Buffer) end)
+            if not ok then return end
+            pcall(function() writefile(CONFIG_FOLDER .. "/replay_" .. (Replay._name or "clip") .. ".json", data) end)
+            Fluent:Notify({ Title = "Реплей", Content = "Сохранено: "..(Replay._name or "clip"), Duration = 3 })
+        end,
+    })
+    Tabs.Replay:AddSection("Воспроизведение")
+    Tabs.Replay:AddButton({
+        Title = "Воспроизвести",
+        Callback = function()
+            if #Replay.Buffer < 2 then
+                Fluent:Notify({ Title = "Реплей", Content = "Нет записи", Duration = 3 })
+                return
+            end
+            wSent, sSent, aSent, dSent, qSent, eSent = false, false, false, false, false, false
+            ctrlVirt = false
+            pIsDown = false
+            zSent = false
+            for _, k in ipairs({Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.A, Enum.KeyCode.D, Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.LeftControl, Enum.KeyCode.Z, AW.PKey}) do
+                VIM:SendKeyEvent(false, k, false, game)
+            end
+            Replay.Playing = true
+            Replay.PlayStartTime = tick()
+            Replay._playIdx = 1
+            Fluent:Notify({ Title = "Реплей", Content = "Играю "..#Replay.Buffer.." точек", Duration = 3 })
+        end,
+    })
+    Tabs.Replay:AddButton({
+        Title = "Стоп воспроизведение",
+        Callback = function()
+            Replay.Playing = false
+            sendW(false); sendS(false); sendA(false); sendD(false)
+            sendQ(false); sendE(false); sendCtrl(false); setP(false)
+            VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+        end,
+    })
+    Tabs.Replay:AddButton({
+        Title = "Загрузить сохранённую",
+        Callback = function()
+            local path = CONFIG_FOLDER .. "/replay_" .. (Replay._name or "clip") .. ".json"
+            if not isfile(path) then
+                Fluent:Notify({ Title = "Реплей", Content = "Файл не найден", Duration = 3 })
+                return
+            end
+            local ok, data = pcall(readfile, path)
+            if not ok then return end
+            local dok, buf = pcall(function() return HttpService:JSONDecode(data) end)
+            if not dok or type(buf) ~= "table" then return end
+            Replay.Buffer = buf
+            Fluent:Notify({ Title = "Реплей", Content = "Загружено "..#buf.." точек", Duration = 4 })
+        end,
+    })
+        -- ============ CONFIG ============
+    local cfgNameInput = "default"
+    local visCfgName = "visual_default"
+
+    local function listFiles(folder)
+        local out = {}
+        local ok, files = pcall(listfiles, folder)
+        if not ok or not files then return { "—" } end
+        for _, path in ipairs(files) do
+            local name = path:match("([^/\\]+)%.json$")
+            if name then table.insert(out, name) end
+        end
+        if #out == 0 then return { "—" } end
+        return out
+    end
+
+    local function buildMainConfig()
+        return {
+            VehicleSpeed = VehicleSpeed, BoostKeybind = BoostBindState.value.Name,
+            Theme = currentTheme,
+            AW = {
+                Enabled=AW.Enabled, TARGET=AW.TARGET, FALL_SPD=AW.FALL_SPD, RISE_SPD=AW.RISE_SPD,
+                PULSE_MIN=AW.PULSE_MIN, PULSE_MAX=AW.PULSE_MAX, SMOOTH=AW.SMOOTH, OVER=AW.OVER,
+                KICK_TIME=AW.KICK_TIME, Cruise=AW.Cruise, PEnabled=AW.PEnabled,
+                PFrom=AW.PFrom, PTo=AW.PTo,
+            },
+        }
+    end
+
+    local function buildVisualConfig()
+        return {
+            HUD = {
+                Enabled=HUD.Enabled, Size=HUD.Size, X=HUD.X, Y=HUD.Y, ShowSpeed=HUD.ShowSpeed,
+                SpeedUnit=HUD.SpeedUnit,
+                BgTransparency=HUD.BgTransparency,
+                Accent=HUD.Accent and {HUD.Accent.R, HUD.Accent.G, HUD.Accent.B} or nil,
+                BgColor=HUD.BgColor and {HUD.BgColor.R, HUD.BgColor.G, HUD.BgColor.B} or nil,
+            },
+            Trail = {
+                Enabled=TrailCfg.Enabled, Lifetime=TrailCfg.Lifetime,
+                Transparency=TrailCfg.Transparency, Brightness=TrailCfg.Brightness,
+                OffsetX=TrailCfg.OffsetX, OffsetY=TrailCfg.OffsetY, OffsetZ=TrailCfg.OffsetZ,
+                Mode=TrailCfg.Mode, ManualPath=TrailCfg.ManualPath,
+                FlatHeight=TrailCfg.FlatHeight, FlatWidth=TrailCfg.FlatWidth,
+                FlatRotation=TrailCfg.FlatRotation,
+                FlatOffsetX=TrailCfg.FlatOffsetX, FlatOffsetZ=TrailCfg.FlatOffsetZ,
+                Color1={TrailCfg.Color1.R, TrailCfg.Color1.G, TrailCfg.Color1.B},
+                Color2={TrailCfg.Color2.R, TrailCfg.Color2.G, TrailCfg.Color2.B},
+            },
+            Lighting = {
+                Brightness = safeNum(Lighting.Brightness, 1),
+                ClockTime = safeNum(Lighting.ClockTime, 14),
+                ExposureCompensation = safeNum(Lighting.ExposureCompensation, 0),
+                GlobalShadows = Lighting.GlobalShadows,
+                Ambient = {Lighting.Ambient.R, Lighting.Ambient.G, Lighting.Ambient.B},
+                OutdoorAmbient = {Lighting.OutdoorAmbient.R, Lighting.OutdoorAmbient.G, Lighting.OutdoorAmbient.B},
+                EnvironmentDiffuseScale = safeNum(Lighting.EnvironmentDiffuseScale, 0),
+                EnvironmentSpecularScale = safeNum(Lighting.EnvironmentSpecularScale, 0),
+                TimeLockActive = TimeLock.Active,
+                TimeLockValue = safeNum(TimeLock.Value, 14),
+            },
+            CC = { Brightness=CC.Brightness, Contrast=CC.Contrast, Saturation=CC.Saturation,
+                   TintColor=CC.TintColor and {CC.TintColor.R, CC.TintColor.G, CC.TintColor.B} or nil },
+            BL = { Intensity=BL.Intensity, Size=BL.Size, Threshold=BL.Threshold },
+            SR = { Intensity=SR.Intensity, Spread=SR.Spread },
+            BR = { Size=BR.Size },
+            AT = { Density=AT.Density, Haze=AT.Haze, Glare=AT.Glare,
+                   Color=AT.Color and {AT.Color.R, AT.Color.G, AT.Color.B} or nil },
+        }
+    end
+
+    local function applyMainConfig(cfg)
+        if type(cfg) ~= "table" then return end
+        if cfg.VehicleSpeed then VehicleSpeed = safeNum(cfg.VehicleSpeed, 50) end
+        if cfg.AW then for k, v in pairs(cfg.AW) do AW[k] = v end end
+        if cfg.BoostKeybind then
+            local keyName = cfg.BoostKeybind
+            for _, k in ipairs(Enum.KeyCode:GetEnumItems()) do
+                if k.Name == keyName then
+                    BoostKeybind = k
+                    BoostBindState.value = k
+                    break
+                end
+            end
+        end
+        if cfg.Theme and ThemeColors[cfg.Theme] then
+            currentTheme = cfg.Theme
+            saveThemeToFile(cfg.Theme)
+            pcall(function() Fluent:SetTheme(cfg.Theme) end)
+            task.wait(0.05)
+            applyHUDColors()
+        end
+    end
+
+    local function applyVisualConfig(cfg)
+        if type(cfg) ~= "table" then return end
+
+        if cfg.HUD then
+            for k, v in pairs(cfg.HUD) do
+                if k == "Accent" and type(v) == "table" then HUD.Accent = Color3.new(unpack(v))
+                elseif k == "BgColor" and type(v) == "table" then HUD.BgColor = Color3.new(unpack(v))
+                else HUD[k] = v end
+            end
+            if hudFrame then hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y) end
+            if hudShadow then hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72) end
+            if hudLabel then hudLabel.TextSize = HUD.Size end
+            if hudFrame then hudFrame.Visible = HUD.Enabled end
+            if hudShadow then hudShadow.Visible = HUD.Enabled end
+            applyHUDColors()
+        end
+
+        if cfg.Trail then
+            TrailCfg.Enabled = cfg.Trail.Enabled or false
+            TrailCfg.Lifetime = safeNum(cfg.Trail.Lifetime, 0.6)
+            TrailCfg.Transparency = safeNum(cfg.Trail.Transparency, 0.2)
+            TrailCfg.Brightness = safeNum(cfg.Trail.Brightness, 0.6)
+            TrailCfg.OffsetX = safeNum(cfg.Trail.OffsetX, 0)
+            TrailCfg.OffsetY = safeNum(cfg.Trail.OffsetY, 0)
+            TrailCfg.OffsetZ = safeNum(cfg.Trail.OffsetZ, 0)
+            TrailCfg.Mode = cfg.Trail.Mode or "auto"
+            TrailCfg.ManualPath = cfg.Trail.ManualPath or ""
+            TrailCfg.FlatHeight = safeNum(cfg.Trail.FlatHeight, 0.05)
+            TrailCfg.FlatWidth = safeNum(cfg.Trail.FlatWidth, 1.5)
+            TrailCfg.FlatRotation = safeNum(cfg.Trail.FlatRotation, 0)
+            TrailCfg.FlatOffsetX = safeNum(cfg.Trail.FlatOffsetX, 0)
+            TrailCfg.FlatOffsetZ = safeNum(cfg.Trail.FlatOffsetZ, 0)
+            if cfg.Trail.Color1 then TrailCfg.Color1 = Color3.new(unpack(cfg.Trail.Color1)) end
+            if cfg.Trail.Color2 then TrailCfg.Color2 = Color3.new(unpack(cfg.Trail.Color2)) end
+            destroyTrail(); destroyFlatTrail()
+            if TrailCfg.Enabled then
+                if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
+            end
+        end
+
+        if cfg.Lighting then
+            local L = cfg.Lighting
+            if L.Brightness then Lighting.Brightness = safeNum(L.Brightness, 1) end
+            if L.ClockTime then Lighting.ClockTime = safeNum(L.ClockTime, 14) end
+            if L.ExposureCompensation then Lighting.ExposureCompensation = safeNum(L.ExposureCompensation, 0) end
+            if L.GlobalShadows ~= nil then Lighting.GlobalShadows = L.GlobalShadows end
+            if type(L.Ambient) == "table" then Lighting.Ambient = Color3.new(unpack(L.Ambient)) end
+            if type(L.OutdoorAmbient) == "table" then Lighting.OutdoorAmbient = Color3.new(unpack(L.OutdoorAmbient)) end
+            if L.EnvironmentDiffuseScale then Lighting.EnvironmentDiffuseScale = safeNum(L.EnvironmentDiffuseScale, 0) end
+            if L.EnvironmentSpecularScale then Lighting.EnvironmentSpecularScale = safeNum(L.EnvironmentSpecularScale, 0) end
+            if L.TimeLockActive ~= nil then TimeLock.Active = L.TimeLockActive end
+            if L.TimeLockValue then TimeLock.Value = safeNum(L.TimeLockValue, 14) end
+        end
+
+        if cfg.CC then
+            CC.Brightness = safeNum(cfg.CC.Brightness, 0)
+            CC.Contrast = safeNum(cfg.CC.Contrast, 0)
+            CC.Saturation = safeNum(cfg.CC.Saturation, 0)
+            if cfg.CC.TintColor then CC.TintColor = Color3.new(unpack(cfg.CC.TintColor)) end
+            pcall(applyCC)
+        end
+        if cfg.BL then
+            BL.Intensity = cfg.BL.Intensity; BL.Size = cfg.BL.Size; BL.Threshold = cfg.BL.Threshold
+            pcall(applyBL)
+        end
+        if cfg.SR then SR.Intensity = cfg.SR.Intensity; SR.Spread = cfg.SR.Spread; pcall(applySR) end
+        if cfg.BR then BR.Size = cfg.BR.Size; pcall(applyBR) end
+        if cfg.AT then
+            AT.Density = cfg.AT.Density; AT.Haze = cfg.AT.Haze; AT.Glare = cfg.AT.Glare
+            if cfg.AT.Color then AT.Color = Color3.new(unpack(cfg.AT.Color)) end
+            pcall(applyAT)
+        end
+    end
+
+    Tabs.Config:AddSection("Основной конфиг")
+    Tabs.Config:AddInput("CfgName", {
+        Title = "Имя конфига", Default = "default", Placeholder = "myconfig", Finished = false,
+        Callback = function(v) cfgNameInput = tostring(v or "default") end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Сохранить",
+        Callback = function()
+            local ok, encoded = pcall(function() return HttpService:JSONEncode(buildMainConfig()) end)
+            if not ok then return end
+            pcall(function() writefile(CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json", encoded) end)
+            Fluent:Notify({ Title = "Конфиг", Content = "Сохранено: "..cfgNameInput, Duration = 3 })
+        end,
+    })
+    Tabs.Config:AddDropdown("CfgList", {
+        Title = "Configs", Values = listFiles(CONFIG_FOLDER), Default = 1, Multi = false,
+        Callback = function(v) if type(v) == "string" and v ~= "—" then cfgNameInput = v end end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Загрузить",
+        Callback = function()
+            if cfgNameInput == "—" or cfgNameInput == "" then return end
+            local path = CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json"
+            if not isfile(path) then
+                Fluent:Notify({ Title = "Конфиг", Content = "Не найден", Duration = 3 })
+                return
+            end
+            local ok, data = pcall(readfile, path)
+            if not ok then return end
+            local dok, cfg = pcall(function() return HttpService:JSONDecode(data) end)
+            if not dok then return end
+            applyMainConfig(cfg)
+            Fluent:Notify({ Title = "Конфиг", Content = "Загружено: "..cfgNameInput, Duration = 3 })
+        end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Обновить список",
+        Callback = function()
+            if Options.CfgList then Options.CfgList:SetValues(listFiles(CONFIG_FOLDER)) end
+        end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Удалить",
+        Callback = function()
+            local path = CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json"
+            if isfile(path) then pcall(delfile, path) end
+            if Options.CfgList then Options.CfgList:SetValues(listFiles(CONFIG_FOLDER)) end
+        end,
+    })
+
+    Tabs.Config:AddSection("Конфиг визуала")
+    Tabs.Config:AddInput("VisCfgName", {
+        Title = "Имя конфига", Default = "visual_default", Placeholder = "myvisual", Finished = false,
+        Callback = function(v) visCfgName = tostring(v or "visual_default") end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Сохранить (только визуал)",
+        Callback = function()
+            local ok, encoded = pcall(function() return HttpService:JSONEncode(buildVisualConfig()) end)
+            if not ok then return end
+            pcall(function() writefile(VISUAL_FOLDER .. "/" .. visCfgName .. ".json", encoded) end)
+            Fluent:Notify({ Title = "Visual", Content = visCfgName, Duration = 3 })
+        end,
+    })
+    Tabs.Config:AddDropdown("VisCfgList", {
+        Title = "Visual configs", Values = listFiles(VISUAL_FOLDER), Default = 1, Multi = false,
+        Callback = function(v) if type(v) == "string" and v ~= "—" then visCfgName = v end end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Загрузить (только визуал)",
+        Callback = function()
+            if visCfgName == "—" or visCfgName == "" then return end
+            local path = VISUAL_FOLDER .. "/" .. visCfgName .. ".json"
+            if not isfile(path) then
+                Fluent:Notify({ Title = "Visual", Content = "Не найден", Duration = 3 })
+                return
+            end
+            local ok, data = pcall(readfile, path)
+            if not ok then return end
+            local dok, cfg = pcall(function() return HttpService:JSONDecode(data) end)
+            if not dok then return end
+            applyVisualConfig(cfg)
+            Fluent:Notify({ Title = "Visual", Content = visCfgName, Duration = 3 })
+        end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Обновить список (visual)",
+        Callback = function()
+            if Options.VisCfgList then Options.VisCfgList:SetValues(listFiles(VISUAL_FOLDER)) end
+        end,
+    })
+    Tabs.Config:AddButton({
+        Title = "Удалить (visual)",
+        Callback = function()
+            local path = VISUAL_FOLDER .. "/" .. visCfgName .. ".json"
+            if isfile(path) then pcall(delfile, path) end
+            if Options.VisCfgList then Options.VisCfgList:SetValues(listFiles(VISUAL_FOLDER)) end
+        end,
+    })
+
+    -- ============ MISC ============
+    Tabs.Misc:AddSection("Тема интерфейса")
+    Tabs.Misc:AddParagraph({
+        Title = "Тема интерфейса",
+        Content = "Тема применится после перезапуска скрипта",
+    })
+    Tabs.Misc:AddDropdown("ThemeSelect", {
+        Title = "Выбери тему",
+        Values = {"Amethyst", "Dark", "Darker", "Light", "Aqua", "Rose", "Mint", "Sea", "Sunset", "CottonCandy", "Rainbow", "Blood", "Ocean", "Pink", "Peach"},
+        Default = currentTheme,
+        Multi = false,
+        Callback = function(v)
+            if not ThemeColors[v] then
+                Fluent:Notify({ Title = "Theme", Content = "Не найдена: "..tostring(v), Duration = 3 })
+                return
+            end
+            currentTheme = v
+            saveThemeToFile(v)
+            pcall(function() Fluent:SetTheme(v) end)
+            task.wait(0.05)
+            applyHUDColors()
+            Fluent:Notify({
+                Title = "Theme",
+                Content = v.." — перезапусти скрипт для полного применения",
+                Duration = 4,
+            })
+        end,
+    })
+
+    Tabs.Misc:AddSection("Язык / Language")
+    Tabs.Misc:AddDropdown("LangSelect", {
+        Title = "Язык интерфейса",
+        Values = {"Русский", "English"},
+        Default = (Lang.current == "ru") and "Русский" or "English",
+        Multi = false,
+        Callback = function(v)
+            local newLang = (v == "English") and "en" or "ru"
+            if newLang ~= Lang.current then
+                Lang.current = newLang
+                Fluent:Notify({ Title = "Language", Content = "Перезапусти скрипт", Duration = 5 })
+            end
+        end,
+    })
+
+    Tabs.Misc:AddSection("Debug")
+    Tabs.Misc:AddToggle("LogsOn", {
+        Title = "Печатать логи", Default = false,
+        Callback = function(v) AW.LOGS = v end,
+    })
+    Tabs.Misc:AddButton({
+        Title = "Сбросить настройки AW",
+        Callback = function()
+            AW.TARGET=75; AW.FALL_SPD=-3; AW.RISE_SPD=4
+            AW.PULSE_MIN=0.06; AW.PULSE_MAX=0.2
+            AW.SMOOTH=0.5; AW.OVER=77; AW.KICK_TIME=0.3
+            AW.Cruise=false; AW.PEnabled=true
+            AW.PFrom=82; AW.PTo=180
+            if Options.AWTarget then Options.AWTarget:SetValue(75) end
+            if Options.AWOver then Options.AWOver:SetValue(77) end
+            if Options.AWKick then Options.AWKick:SetValue(0.3) end
+            if Options.AWPFrom then Options.AWPFrom:SetValue(82) end
+            if Options.AWPTo then Options.AWPTo:SetValue(180) end
+            if Options.AWPulseMin then Options.AWPulseMin:SetValue(0.06) end
+            if Options.AWPulseMax then Options.AWPulseMax:SetValue(0.2) end
+            if Options.AWSmooth then Options.AWSmooth:SetValue(0.5) end
+        end,
+    })
+
+    -- ============ SYNC ============
+    Tabs.Sync:AddSection("Подключение")
+    Tabs.Sync:AddToggle("SyncEnabled", {
+        Title = "Включить синхронизацию",
+        Default = false,
+        Callback = function(v)
+            SyncCfg.Enabled = v
+            if v then
+                Fluent:Notify({ Title = "Sync", Content = "Подключение к серверу...", Duration = 3 })
+                task.spawn(function()
+                    local ok, res = pcall(function()
+                        return request({ Url = SyncCfg.ServerURL .. "/", Method = "GET" })
+                    end)
+                    if ok and res and res.Success then
+                        Fluent:Notify({ Title = "Sync", Content = "Сервер онлайн", Duration = 3 })
+                    else
+                        Fluent:Notify({
+                            Title = "Sync",
+                            Content = "Сервер недоступен: "..tostring(res and res.StatusMessage or res),
+                            Duration = 5,
+                        })
+                    end
+                end)
+            else
+                for id, _ in pairs(RemotePlayers) do
+                    cleanupRemote(id)
+                end
+                Fluent:Notify({ Title = "Sync", Content = "Отключено", Duration = 2 })
+            end
+        end,
+    })
+
+    Tabs.Sync:AddInput("SyncURL", {
+        Title = "Адрес сервера",
+        Default = SyncCfg.ServerURL,
+        Placeholder = "http://26.X.X.X:3456",
+        Finished = false,
+        Callback = function(v) SyncCfg.ServerURL = tostring(v or "") end,
+    })
+
+    Tabs.Sync:AddSlider("SyncInterval", {
+        Title = "Частота (сек)",
+        Default = 0.4, Min = 0.2, Max = 2, Rounding = 2,
+        Callback = function(v) SyncCfg.Interval = round2(v) end,
+    })
+
+    Tabs.Sync:AddButton({
+        Title = "Проверить соединение",
+        Callback = function()
+            task.spawn(function()
+                local ok, res = pcall(function()
+                    return request({ Url = SyncCfg.ServerURL .. "/", Method = "GET" })
+                end)
+                if ok and res and res.Success then
+                    Fluent:Notify({ Title = "Sync", Content = "Сервер отвечает: "..tostring(res.Body), Duration = 4 })
+                else
+                    Fluent:Notify({
+                        Title = "Sync",
+                        Content = "Ошибка: "..tostring(res and res.StatusMessage or res),
+                        Duration = 5,
+                    })
+                end
+            end)
+        end,
+    })
+
+    Tabs.Sync:AddSection("Что показывать")
+    Tabs.Sync:AddToggle("SyncShowTrails", {
+        Title = "Показывать Trail других", Default = true,
+        Callback = function(v) SyncCfg.ShowTrails = v end,
+    })
+    Tabs.Sync:AddToggle("SyncShowTags", {
+        Title = "Показывать теги над головой", Default = true,
+        Callback = function(v) SyncCfg.ShowTags = v end,
+    })
+    Tabs.Sync:AddSlider("SyncDrawDistance", {
+        Title = "Дальность отображения (studs)",
+        Default = 500, Min = 50, Max = 5000, Rounding = 50,
+        Callback = function(v) SyncCfg.DrawDistance = roundInt(v) end,
+    })
+
+    Tabs.Sync:AddSection("Информация")
+    Tabs.Sync:AddParagraph({
+        Title = "Мой ID",
+        Content = "Уникальный ID: "..tostring(mySyncId),
+    })
+    Tabs.Sync:AddButton({
+        Title = "Показать игроков онлайн",
+        Callback = function()
+            task.spawn(function()
+                local all = fetchAllData()
+                local count = 0
+                local list = {}
+                for id, data in pairs(all) do
+                    count = count + 1
+                    if id == mySyncId then
+                        table.insert(list, "• "..tostring(data.name).." (я)")
+                    else
+                        table.insert(list, "• "..tostring(data.name))
+                    end
+                end
+                local text
+                if count == 0 then
+                    text = "Никого нет в сети"
+                else
+                    text = "Игроков: "..count.."\n"..table.concat(list, "\n")
+                end
+                Fluent:Notify({ Title = "Sync", Content = text, Duration = 6 })
+            end)
+        end,
+    })
 end
 
 buildUI()
 Window:SelectTab(1)
--- ==================== VISUAL ====================
-Tabs.Visual:AddSection("Погода / время")
-Tabs.Visual:AddSlider("LBr", {
-    Title = "Яркость", Default = 1, Min = 0, Max = 10, Rounding = 1,
-    Callback = function(v) Lighting.Brightness = safeNum(v, 1) end,
-})
-Tabs.Visual:AddSlider("LTime", {
-    Title = "Время суток", Default = math.floor(LightOrig.ClockTime + 0.5),
-    Min = 0, Max = 24, Rounding = 1,
-    Callback = function(v)
-        local n = roundInt(v)
-        TimeLock.Active = true
-        TimeLock.Value = n
-        Lighting.ClockTime = n
-    end,
-})
-Tabs.Visual:AddToggle("LTimeLock", {
-    Title = "Блокировать время", Default = false,
-    Callback = function(v) TimeLock.Active = v end,
-})
-Tabs.Visual:AddSlider("LExp", {
-    Title = "Экспозиция", Default = 0, Min = -3, Max = 3, Rounding = 2,
-    Callback = function(v) Lighting.ExposureCompensation = round2(v) end,
-})
-
-Tabs.Visual:AddSection("Тени и свет")
-Tabs.Visual:AddToggle("LShadows", { Title = "Глобальные тени", Default = LightOrig.GlobalShadows, Callback = function(v) Lighting.GlobalShadows = v end })
-Tabs.Visual:AddSlider("LAmb", {
-    Title = "Ambient яркость", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
-    Callback = function(v)
-        local n = math.clamp(round2(v), 0, 1)
-        Lighting.Ambient = Color3.new(n, n, n)
-        Lighting.OutdoorAmbient = Color3.new(n, n, n)
-    end,
-})
-Tabs.Visual:AddSlider("LDiff", {
-    Title = "Diffuse", Default = 0, Min = 0, Max = 3, Rounding = 1,
-    Callback = function(v) Lighting.EnvironmentDiffuseScale = roundInt(v) end,
-})
-Tabs.Visual:AddSlider("LSpec", {
-    Title = "Specular", Default = 0, Min = 0, Max = 3, Rounding = 1,
-    Callback = function(v) Lighting.EnvironmentSpecularScale = roundInt(v) end,
-})
-
-Tabs.Visual:AddSection("Пресеты времени")
-Tabs.Visual:AddButton({
-    Title = "Рассвет (6:00)",
-    Callback = function() TimeLock.Active = true; TimeLock.Value = 6; Lighting.ClockTime = 6; Options.LTime:SetValue(6) end,
-})
-Tabs.Visual:AddButton({
-    Title = "День (12:00)",
-    Callback = function() TimeLock.Active = true; TimeLock.Value = 12; Lighting.ClockTime = 12; Options.LTime:SetValue(12) end,
-})
-Tabs.Visual:AddButton({
-    Title = "Закат (18:00)",
-    Callback = function() TimeLock.Active = true; TimeLock.Value = 18; Lighting.ClockTime = 18; Options.LTime:SetValue(18) end,
-})
-Tabs.Visual:AddButton({
-    Title = "Ночь (0:00)",
-    Callback = function() TimeLock.Active = true; TimeLock.Value = 0; Lighting.ClockTime = 0; Options.LTime:SetValue(0) end,
-})
-Tabs.Visual:AddButton({
-    Title = "Сбросить освещение",
-    Callback = function() resetLighting(); Fluent:Notify({ Title = "Lighting", Content = "Reset", Duration = 3 }) end,
-})
-
-Tabs.Visual:AddSection("Color Correction")
-Tabs.Visual:AddSlider("CCBr", { Title = "Яркость", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Brightness = round2(v); pcall(applyCC) end })
-Tabs.Visual:AddSlider("CCCon", { Title = "Контраст", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Contrast = round2(v); pcall(applyCC) end })
-Tabs.Visual:AddSlider("CCSat", { Title = "Насыщенность", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) CC.Saturation = round2(v); pcall(applyCC) end })
-Tabs.Visual:AddColorpicker("CCTint", { Title = "Тинт", Default = Color3.fromRGB(255,255,255), Callback = function(c) CC.TintColor = c; pcall(applyCC) end })
-
-Tabs.Visual:AddSection("Bloom (свечение)")
-Tabs.Visual:AddSlider("BLInt", { Title = "Интенсивность", Default = 0, Min = 0, Max = 5, Rounding = 2, Callback = function(v) local n = round2(v); BL.Intensity = n > 0.05 and n or nil; pcall(applyBL) end })
-Tabs.Visual:AddSlider("BLSize", { Title = "Размер", Default = 0, Min = 0, Max = 56, Rounding = 1, Callback = function(v) local n = roundInt(v); BL.Size = n > 1 and n or nil; pcall(applyBL) end })
-Tabs.Visual:AddSlider("BLThr", { Title = "Порог", Default = 0, Min = 0, Max = 5, Rounding = 2, Callback = function(v) local n = round2(v); BL.Threshold = n > 0.05 and n or nil; pcall(applyBL) end })
-
-Tabs.Visual:AddSection("Sun Rays (лучи солнца)")
-Tabs.Visual:AddSlider("SRInt", { Title = "Интенсивность", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); SR.Intensity = n > 0.02 and n or nil; pcall(applySR) end })
-Tabs.Visual:AddSlider("SRSpread", { Title = "Разброс", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); SR.Spread = n > 0.02 and n or nil; pcall(applySR) end })
-
-Tabs.Visual:AddSection("Blur (размытие)")
-Tabs.Visual:AddSlider("BRSize", { Title = "Размер", Default = 0, Min = 0, Max = 56, Rounding = 1, Callback = function(v) local n = roundInt(v); BR.Size = n > 1 and n or nil; pcall(applyBR) end })
-
-Tabs.Visual:AddSection("Atmosphere (атмосфера)")
-Tabs.Visual:AddSlider("ATDen", { Title = "Плотность", Default = 0, Min = 0, Max = 1, Rounding = 2, Callback = function(v) local n = round2(v); AT.Density = n > 0.02 and n or nil; pcall(applyAT) end })
-Tabs.Visual:AddSlider("ATHaze", { Title = "Дымка", Default = 0, Min = 0, Max = 10, Rounding = 2, Callback = function(v) local n = round2(v); AT.Haze = n > 0.05 and n or nil; pcall(applyAT) end })
-Tabs.Visual:AddSlider("ATGlare", { Title = "Блик", Default = 0, Min = 0, Max = 10, Rounding = 2, Callback = function(v) local n = round2(v); AT.Glare = n > 0.05 and n or nil; pcall(applyAT) end })
-Tabs.Visual:AddColorpicker("ATColor", { Title = "Цвет", Default = Color3.fromRGB(199,199,199), Callback = function(c) AT.Color = c; pcall(applyAT) end })
-
-Tabs.Visual:AddSection("Пресеты эффектов")
-Tabs.Visual:AddButton({
-    Title = "Красиво",
-    Callback = function()
-        BL.Intensity = 1.5; BL.Size = 24; BL.Threshold = 0.9
-        CC.Saturation = 0.3; CC.Contrast = 0.1
-        pcall(applyBL); pcall(applyCC)
-    end,
-})
-Tabs.Visual:AddButton({
-    Title = "Кинематограф",
-    Callback = function()
-        CC.Contrast = 0.3; CC.Saturation = -0.1; BR.Size = 4
-        BL.Intensity = 2; BL.Size = 32; BL.Threshold = 0.7
-        pcall(applyCC); pcall(applyBR); pcall(applyBL)
-    end,
-})
-Tabs.Visual:AddButton({
-    Title = "Убрать всё",
-    Callback = function()
-        CC = { Brightness=0, Contrast=0, Saturation=0, TintColor=nil }
-        BL = { Intensity=nil, Size=nil, Threshold=nil }
-        SR = { Intensity=nil, Spread=nil }
-        BR = { Size=nil }
-        AT = { Density=nil, Haze=nil, Glare=nil, Color=nil }
-        resetEffects()
-    end,
-})
-
--- ==================== AUTOTUNE ====================
-Tabs.Auto:AddSection("Автотюнинг")
-Tabs.Auto:AddParagraph({ Title = "Автотюнинг", Content = "Катайся на вилли 30 сек" })
-Tabs.Auto:AddSlider("AutoTuneDur", {
-    Title = "Длительность", Default = 30, Min = 10, Max = 120, Rounding = 1,
-    Callback = function(v) AutoTune.Duration = roundInt(v) end,
-})
-Tabs.Auto:AddButton({
-    Title = "Начать самонастройку",
-    Callback = function()
-        AutoTune.Running = true
-        AutoTune.Samples = {}
-        AutoTune.StartTime = tick()
-        Fluent:Notify({ Title = "Автотюнинг", Content = "Катайся "..AutoTune.Duration.." сек", Duration = 4 })
-    end,
-})
-Tabs.Auto:AddButton({
-    Title = "Стоп",
-    Callback = function() AutoTune.Running = false end,
-})
-Tabs.Auto:AddButton({
-    Title = "Применить результат",
-    Callback = function()
-        local r = AutoTune.Result
-        if not r then
-            Fluent:Notify({ Title = "Автотюнинг", Content = "Сначала прогони настройку", Duration = 3 })
-            return
-        end
-        AW.TARGET = roundInt(r.target)
-        AW.OVER = roundInt(r.over)
-        AW.PULSE_MAX = round2(r.pulseMax)
-        AW.KICK_TIME = round2(r.kickTime)
-        if Options.AWTarget then Options.AWTarget:SetValue(AW.TARGET) end
-        if Options.AWOver then Options.AWOver:SetValue(AW.OVER) end
-        if Options.AWPulseMax then Options.AWPulseMax:SetValue(AW.PULSE_MAX) end
-        if Options.AWKick then Options.AWKick:SetValue(AW.KICK_TIME) end
-        Fluent:Notify({ Title = "Автотюнинг", Content = string.format("T=%d O=%d", AW.TARGET, AW.OVER), Duration = 5 })
-    end,
-})
-Tabs.Auto:AddSection("Обучение из движений")
-Tabs.Auto:AddButton({
-    Title = "Начать обучение",
-    Callback = function()
-        ML.Running = true; ML.Samples = {}
-        Fluent:Notify({ Title = "ML", Content = "Делай вилли сам", Duration = 4 })
-    end,
-})
-Tabs.Auto:AddButton({
-    Title = "Стоп и применить",
-    Callback = function()
-        ML.Running = false
-        if #ML.Samples < 30 then
-            Fluent:Notify({ Title = "ML", Content = "Мало данных", Duration = 3 })
-            return
-        end
-        local arr = {}
-        for _, s in ipairs(ML.Samples) do table.insert(arr, safeNum(s.pitch, 0)) end
-        table.sort(arr)
-        local idx90 = math.max(1, math.floor(#arr * 0.9))
-        local idx75 = math.max(1, math.floor(#arr * 0.75))
-        AW.TARGET = roundInt(arr[idx75])
-        AW.OVER = roundInt(arr[idx90] * 1.05)
-        if Options.AWTarget then Options.AWTarget:SetValue(AW.TARGET) end
-        if Options.AWOver then Options.AWOver:SetValue(AW.OVER) end
-        Fluent:Notify({ Title = "ML", Content = string.format("T=%d O=%d", AW.TARGET, AW.OVER), Duration = 5 })
-    end,
-})
-
--- ==================== REPLAY ====================
-Tabs.Replay:AddSection("Реплей")
-Tabs.Replay:AddInput("ReplayName", {
-    Title = "Имя записи", Default = "clip", Placeholder = "clip", Finished = false,
-    Callback = function(v) Replay._name = tostring(v or "clip") end,
-})
-Tabs.Replay:AddToggle("RecordAW", {
-    Title = "Писать импульсы AW", Default = false,
-    Callback = function(v) Replay.RecordAW = v end,
-})
-
-Tabs.Replay:AddButton({
-    Title = "Начать запись",
-    Callback = function()
-        Replay.Recording = true
-        Replay.Playing = false
-        Replay.Buffer = {}
-        Replay.StartTime = tick()
-        Replay.LastW, Replay.LastS, Replay.LastZ = false, false, false
-        Replay.LastA, Replay.LastD = false, false
-        Replay.LastCtrl, Replay.LastQ, Replay.LastE = false, false, false
-        Replay.LastRecTime = 0
-        Fluent:Notify({ Title = "Реплей", Content = "Запись пошла!", Duration = 3 })
-    end,
-})
-Tabs.Replay:AddButton({
-    Title = "Остановить",
-    Callback = function()
-        Replay.Recording = false
-        local wc, ac, dc, ctrlc, qc, ec, zc = 0, 0, 0, 0, 0, 0, 0
-        for _, e in ipairs(Replay.Buffer) do
-            if e.w == 1 then wc = wc + 1 end
-            if (e.a or 0) == 1 then ac = ac + 1 end
-            if (e.d or 0) == 1 then dc = dc + 1 end
-            if (e.c or 0) == 1 then ctrlc = ctrlc + 1 end
-            if (e.q or 0) == 1 then qc = qc + 1 end
-            if (e.e or 0) == 1 then ec = ec + 1 end
-            if (e.zt or 0) == 1 then zc = zc + 1 end
-        end
-        local dur = 0
-        if #Replay.Buffer > 0 then dur = safeNum(Replay.Buffer[#Replay.Buffer].t, 0) / 1000 end
-        Fluent:Notify({
-            Title = "Реплей",
-            Content = string.format("Pts:%d W:%d A:%d D:%d C:%d Q:%d E:%d Z:%d %.1fs",
-                #Replay.Buffer, wc, ac, dc, ctrlc, qc, ec, zc, dur),
-            Duration = 7,
-        })
-    end,
-})
-Tabs.Replay:AddButton({
-    Title = "Сохранить",
-    Callback = function()
-        if #Replay.Buffer < 2 then
-            Fluent:Notify({ Title = "Реплей", Content = "Пустая запись", Duration = 3 })
-            return
-        end
-        local ok, data = pcall(function() return game:GetService("HttpService"):JSONEncode(Replay.Buffer) end)
-        if not ok then return end
-        pcall(function() writefile(CONFIG_FOLDER .. "/replay_" .. (Replay._name or "clip") .. ".json", data) end)
-        Fluent:Notify({ Title = "Реплей", Content = "Сохранено: "..(Replay._name or "clip"), Duration = 3 })
-    end,
-})
-Tabs.Replay:AddSection("Воспроизведение")
-Tabs.Replay:AddButton({
-    Title = "Воспроизвести",
-    Callback = function()
-        if #Replay.Buffer < 2 then
-            Fluent:Notify({ Title = "Реплей", Content = "Нет записи", Duration = 3 })
-            return
-        end
-        wSent, sSent, aSent, dSent, qSent, eSent = false, false, false, false, false, false
-        ctrlVirt = false
-        pIsDown = false
-        zSent = false
-        for _, k in ipairs({Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.A, Enum.KeyCode.D, Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.LeftControl, Enum.KeyCode.Z, AW.PKey}) do
-            VIM:SendKeyEvent(false, k, false, game)
-        end
-        Replay.Playing = true
-        Replay.PlayStartTime = tick()
-        Replay._playIdx = 1
-        Fluent:Notify({ Title = "Реплей", Content = "Играю "..#Replay.Buffer.." точек", Duration = 3 })
-    end,
-})
-Tabs.Replay:AddButton({
-    Title = "Стоп воспроизведение",
-    Callback = function()
-        Replay.Playing = false
-        sendW(false); sendS(false); sendA(false); sendD(false)
-        sendQ(false); sendE(false); sendCtrl(false); setP(false)
-        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
-    end,
-})
-Tabs.Replay:AddButton({
-    Title = "Загрузить сохранённую",
-    Callback = function()
-        local path = CONFIG_FOLDER .. "/replay_" .. (Replay._name or "clip") .. ".json"
-        if not isfile(path) then
-            Fluent:Notify({ Title = "Реплей", Content = "Файл не найден", Duration = 3 })
-            return
-        end
-        local ok, data = pcall(readfile, path)
-        if not ok then return end
-        local dok, buf = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
-        if not dok or type(buf) ~= "table" then return end
-        Replay.Buffer = buf
-        Fluent:Notify({ Title = "Реплей", Content = "Загружено "..#buf.." точек", Duration = 4 })
-    end,
-})
--- ==================== CONFIG ====================
-local cfgNameInput = "default"
-local visCfgName = "visual_default"
-
-local function listFiles(folder)
-    local out = {}
-    local ok, files = pcall(listfiles, folder)
-    if not ok or not files then return { "—" } end
-    for _, path in ipairs(files) do
-        local name = path:match("([^/\\]+)%.json$")
-        if name then table.insert(out, name) end
-    end
-    if #out == 0 then return { "—" } end
-    return out
-end
-
-local function buildMainConfig()
-    return {
-        VehicleSpeed = VehicleSpeed, BoostKeybind = BoostBindState.value.Name,
-        Theme = currentTheme,
-        AW = {
-            Enabled=AW.Enabled, TARGET=AW.TARGET, FALL_SPD=AW.FALL_SPD, RISE_SPD=AW.RISE_SPD,
-            PULSE_MIN=AW.PULSE_MIN, PULSE_MAX=AW.PULSE_MAX, SMOOTH=AW.SMOOTH, OVER=AW.OVER,
-            KICK_TIME=AW.KICK_TIME, Cruise=AW.Cruise, PEnabled=AW.PEnabled,
-            PFrom=AW.PFrom, PTo=AW.PTo,
-        },
-    }
-end
-
-local function buildVisualConfig()
-    return {
-        HUD = {
-            Enabled=HUD.Enabled, Size=HUD.Size, X=HUD.X, Y=HUD.Y, ShowSpeed=HUD.ShowSpeed,
-            SpeedUnit=HUD.SpeedUnit,
-            BgTransparency=HUD.BgTransparency,
-            Accent=HUD.Accent and {HUD.Accent.R, HUD.Accent.G, HUD.Accent.B} or nil,
-            BgColor=HUD.BgColor and {HUD.BgColor.R, HUD.BgColor.G, HUD.BgColor.B} or nil,
-        },
-        Trail = {
-            Enabled=TrailCfg.Enabled, Lifetime=TrailCfg.Lifetime,
-            Transparency=TrailCfg.Transparency, Brightness=TrailCfg.Brightness,
-            OffsetX=TrailCfg.OffsetX, OffsetY=TrailCfg.OffsetY, OffsetZ=TrailCfg.OffsetZ,
-            Mode=TrailCfg.Mode, ManualPath=TrailCfg.ManualPath,
-            FlatHeight=TrailCfg.FlatHeight, FlatWidth=TrailCfg.FlatWidth,
-            FlatRotation=TrailCfg.FlatRotation,
-            FlatOffsetX=TrailCfg.FlatOffsetX, FlatOffsetZ=TrailCfg.FlatOffsetZ,
-            Color1={TrailCfg.Color1.R, TrailCfg.Color1.G, TrailCfg.Color1.B},
-            Color2={TrailCfg.Color2.R, TrailCfg.Color2.G, TrailCfg.Color2.B},
-        },
-        Lighting = {
-            Brightness = safeNum(Lighting.Brightness, 1),
-            ClockTime = safeNum(Lighting.ClockTime, 14),
-            ExposureCompensation = safeNum(Lighting.ExposureCompensation, 0),
-            GlobalShadows = Lighting.GlobalShadows,
-            Ambient = {Lighting.Ambient.R, Lighting.Ambient.G, Lighting.Ambient.B},
-            OutdoorAmbient = {Lighting.OutdoorAmbient.R, Lighting.OutdoorAmbient.G, Lighting.OutdoorAmbient.B},
-            EnvironmentDiffuseScale = safeNum(Lighting.EnvironmentDiffuseScale, 0),
-            EnvironmentSpecularScale = safeNum(Lighting.EnvironmentSpecularScale, 0),
-            TimeLockActive = TimeLock.Active,
-            TimeLockValue = safeNum(TimeLock.Value, 14),
-        },
-        CC = { Brightness=CC.Brightness, Contrast=CC.Contrast, Saturation=CC.Saturation,
-               TintColor=CC.TintColor and {CC.TintColor.R, CC.TintColor.G, CC.TintColor.B} or nil },
-        BL = { Intensity=BL.Intensity, Size=BL.Size, Threshold=BL.Threshold },
-        SR = { Intensity=SR.Intensity, Spread=SR.Spread },
-        BR = { Size=BR.Size },
-        AT = { Density=AT.Density, Haze=AT.Haze, Glare=AT.Glare,
-               Color=AT.Color and {AT.Color.R, AT.Color.G, AT.Color.B} or nil },
-    }
-end
-
-local function applyMainConfig(cfg)
-    if type(cfg) ~= "table" then return end
-    if cfg.VehicleSpeed then VehicleSpeed = safeNum(cfg.VehicleSpeed, 50) end
-    if cfg.AW then for k, v in pairs(cfg.AW) do AW[k] = v end end
-    if cfg.BoostKeybind then
-        local keyName = cfg.BoostKeybind
-        for _, k in ipairs(Enum.KeyCode:GetEnumItems()) do
-            if k.Name == keyName then
-                BoostKeybind = k
-                BoostBindState.value = k
-                break
-            end
-        end
-    end
-    if cfg.Theme and ThemeColors[cfg.Theme] then
-        currentTheme = cfg.Theme
-        saveThemeToFile(cfg.Theme)
-        pcall(function() Fluent:SetTheme(cfg.Theme) end)
-        task.wait(0.05)
-        applyHUDColors()
-    end
-end
-
-local function applyVisualConfig(cfg)
-    if type(cfg) ~= "table" then return end
-
-    if cfg.HUD then
-        for k, v in pairs(cfg.HUD) do
-            if k == "Accent" and type(v) == "table" then HUD.Accent = Color3.new(unpack(v))
-            elseif k == "BgColor" and type(v) == "table" then HUD.BgColor = Color3.new(unpack(v))
-            else HUD[k] = v end
-        end
-        if hudFrame then hudFrame.Position = UDim2.new(0, HUD.X, 0, HUD.Y) end
-        if hudShadow then hudShadow.Position = UDim2.new(0, HUD.X + 120, 0, HUD.Y + 72) end
-        if hudLabel then hudLabel.TextSize = HUD.Size end
-        if hudFrame then hudFrame.Visible = HUD.Enabled end
-        if hudShadow then hudShadow.Visible = HUD.Enabled end
-        applyHUDColors()
-    end
-
-    if cfg.Trail then
-        TrailCfg.Enabled = cfg.Trail.Enabled or false
-        TrailCfg.Lifetime = safeNum(cfg.Trail.Lifetime, 0.6)
-        TrailCfg.Transparency = safeNum(cfg.Trail.Transparency, 0.2)
-        TrailCfg.Brightness = safeNum(cfg.Trail.Brightness, 0.6)
-        TrailCfg.OffsetX = safeNum(cfg.Trail.OffsetX, 0)
-        TrailCfg.OffsetY = safeNum(cfg.Trail.OffsetY, 0)
-        TrailCfg.OffsetZ = safeNum(cfg.Trail.OffsetZ, 0)
-        TrailCfg.Mode = cfg.Trail.Mode or "auto"
-        TrailCfg.ManualPath = cfg.Trail.ManualPath or ""
-        TrailCfg.FlatHeight = safeNum(cfg.Trail.FlatHeight, 0.05)
-        TrailCfg.FlatWidth = safeNum(cfg.Trail.FlatWidth, 1.5)
-        TrailCfg.FlatRotation = safeNum(cfg.Trail.FlatRotation, 0)
-        TrailCfg.FlatOffsetX = safeNum(cfg.Trail.FlatOffsetX, 0)
-        TrailCfg.FlatOffsetZ = safeNum(cfg.Trail.FlatOffsetZ, 0)
-        if cfg.Trail.Color1 then TrailCfg.Color1 = Color3.new(unpack(cfg.Trail.Color1)) end
-        if cfg.Trail.Color2 then TrailCfg.Color2 = Color3.new(unpack(cfg.Trail.Color2)) end
-        destroyTrail(); destroyFlatTrail()
-        if TrailCfg.Enabled then
-            if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
-        end
-    end
-
-    if cfg.Lighting then
-        local L = cfg.Lighting
-        if L.Brightness then Lighting.Brightness = safeNum(L.Brightness, 1) end
-        if L.ClockTime then Lighting.ClockTime = safeNum(L.ClockTime, 14) end
-        if L.ExposureCompensation then Lighting.ExposureCompensation = safeNum(L.ExposureCompensation, 0) end
-        if L.GlobalShadows ~= nil then Lighting.GlobalShadows = L.GlobalShadows end
-        if type(L.Ambient) == "table" then Lighting.Ambient = Color3.new(unpack(L.Ambient)) end
-        if type(L.OutdoorAmbient) == "table" then Lighting.OutdoorAmbient = Color3.new(unpack(L.OutdoorAmbient)) end
-        if L.EnvironmentDiffuseScale then Lighting.EnvironmentDiffuseScale = safeNum(L.EnvironmentDiffuseScale, 0) end
-        if L.EnvironmentSpecularScale then Lighting.EnvironmentSpecularScale = safeNum(L.EnvironmentSpecularScale, 0) end
-        if L.TimeLockActive ~= nil then TimeLock.Active = L.TimeLockActive end
-        if L.TimeLockValue then TimeLock.Value = safeNum(L.TimeLockValue, 14) end
-    end
-
-    if cfg.CC then
-        CC.Brightness = safeNum(cfg.CC.Brightness, 0)
-        CC.Contrast = safeNum(cfg.CC.Contrast, 0)
-        CC.Saturation = safeNum(cfg.CC.Saturation, 0)
-        if cfg.CC.TintColor then CC.TintColor = Color3.new(unpack(cfg.CC.TintColor)) end
-        pcall(applyCC)
-    end
-    if cfg.BL then
-        BL.Intensity = cfg.BL.Intensity; BL.Size = cfg.BL.Size; BL.Threshold = cfg.BL.Threshold
-        pcall(applyBL)
-    end
-    if cfg.SR then SR.Intensity = cfg.SR.Intensity; SR.Spread = cfg.SR.Spread; pcall(applySR) end
-    if cfg.BR then BR.Size = cfg.BR.Size; pcall(applyBR) end
-    if cfg.AT then
-        AT.Density = cfg.AT.Density; AT.Haze = cfg.AT.Haze; AT.Glare = cfg.AT.Glare
-        if cfg.AT.Color then AT.Color = Color3.new(unpack(cfg.AT.Color)) end
-        pcall(applyAT)
-    end
-end
-
-Tabs.Config:AddSection("Основной конфиг")
-Tabs.Config:AddInput("CfgName", {
-    Title = "Имя конфига", Default = "default", Placeholder = "myconfig", Finished = false,
-    Callback = function(v) cfgNameInput = tostring(v or "default") end,
-})
-Tabs.Config:AddButton({
-    Title = "Сохранить",
-    Callback = function()
-        local ok, encoded = pcall(function() return game:GetService("HttpService"):JSONEncode(buildMainConfig()) end)
-        if not ok then return end
-        pcall(function() writefile(CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json", encoded) end)
-        Fluent:Notify({ Title = "Конфиг", Content = "Сохранено: "..cfgNameInput, Duration = 3 })
-    end,
-})
-Tabs.Config:AddDropdown("CfgList", {
-    Title = "Configs", Values = listFiles(CONFIG_FOLDER), Default = 1, Multi = false,
-    Callback = function(v) if type(v) == "string" and v ~= "—" then cfgNameInput = v end end,
-})
-Tabs.Config:AddButton({
-    Title = "Загрузить",
-    Callback = function()
-        if cfgNameInput == "—" or cfgNameInput == "" then return end
-        local path = CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json"
-        if not isfile(path) then
-            Fluent:Notify({ Title = "Конфиг", Content = "Не найден", Duration = 3 })
-            return
-        end
-        local ok, data = pcall(readfile, path)
-        if not ok then return end
-        local dok, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
-        if not dok then return end
-        applyMainConfig(cfg)
-        Fluent:Notify({ Title = "Конфиг", Content = "Загружено: "..cfgNameInput, Duration = 3 })
-    end,
-})
-Tabs.Config:AddButton({
-    Title = "Обновить список",
-    Callback = function()
-        if Options.CfgList then Options.CfgList:SetValues(listFiles(CONFIG_FOLDER)) end
-    end,
-})
-Tabs.Config:AddButton({
-    Title = "Удалить",
-    Callback = function()
-        local path = CONFIG_FOLDER .. "/" .. cfgNameInput .. ".json"
-        if isfile(path) then pcall(delfile, path) end
-        if Options.CfgList then Options.CfgList:SetValues(listFiles(CONFIG_FOLDER)) end
-    end,
-})
-
-Tabs.Config:AddSection("Конфиг визуала")
-Tabs.Config:AddInput("VisCfgName", {
-    Title = "Имя конфига", Default = "visual_default", Placeholder = "myvisual", Finished = false,
-    Callback = function(v) visCfgName = tostring(v or "visual_default") end,
-})
-Tabs.Config:AddButton({
-    Title = "Сохранить (только визуал)",
-    Callback = function()
-        local ok, encoded = pcall(function() return game:GetService("HttpService"):JSONEncode(buildVisualConfig()) end)
-        if not ok then return end
-        pcall(function() writefile(VISUAL_FOLDER .. "/" .. visCfgName .. ".json", encoded) end)
-        Fluent:Notify({ Title = "Visual", Content = visCfgName, Duration = 3 })
-    end,
-})
-Tabs.Config:AddDropdown("VisCfgList", {
-    Title = "Visual configs", Values = listFiles(VISUAL_FOLDER), Default = 1, Multi = false,
-    Callback = function(v) if type(v) == "string" and v ~= "—" then visCfgName = v end end,
-})
-Tabs.Config:AddButton({
-    Title = "Загрузить (только визуал)",
-    Callback = function()
-        if visCfgName == "—" or visCfgName == "" then return end
-        local path = VISUAL_FOLDER .. "/" .. visCfgName .. ".json"
-        if not isfile(path) then
-            Fluent:Notify({ Title = "Visual", Content = "Не найден", Duration = 3 })
-            return
-        end
-        local ok, data = pcall(readfile, path)
-        if not ok then return end
-        local dok, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(data) end)
-        if not dok then return end
-        applyVisualConfig(cfg)
-        Fluent:Notify({ Title = "Visual", Content = visCfgName, Duration = 3 })
-    end,
-})
-Tabs.Config:AddButton({
-    Title = "Обновить список (visual)",
-    Callback = function()
-        if Options.VisCfgList then Options.VisCfgList:SetValues(listFiles(VISUAL_FOLDER)) end
-    end,
-})
-Tabs.Config:AddButton({
-    Title = "Удалить (visual)",
-    Callback = function()
-        local path = VISUAL_FOLDER .. "/" .. visCfgName .. ".json"
-        if isfile(path) then pcall(delfile, path) end
-        if Options.VisCfgList then Options.VisCfgList:SetValues(listFiles(VISUAL_FOLDER)) end
-    end,
-})
-
--- ==================== MISC ====================
-Tabs.Misc:AddSection("Тема интерфейса")
-Tabs.Misc:AddParagraph({
-    Title = "Тема интерфейса",
-    Content = "Тема применится после перезапуска скрипта (сохраняется автоматически)"
-})
-Tabs.Misc:AddDropdown("ThemeSelect", {
-    Title = "Выбери тему",
-    Values = {"Amethyst", "Dark", "Darker", "Light", "Aqua", "Rose", "Mint", "Sea", "Sunset", "CottonCandy", "Rainbow", "Blood", "Ocean", "Pink", "Peach"},
-    Default = currentTheme,
-    Multi = false,
-    Callback = function(v)
-        if not ThemeColors[v] then
-            Fluent:Notify({ Title = "Theme", Content = "Не найдена: "..tostring(v), Duration = 3 })
-            return
-        end
-        currentTheme = v
-        saveThemeToFile(v)
-        pcall(function() Fluent:SetTheme(v) end)
-        task.wait(0.05)
-        applyHUDColors()
-        Fluent:Notify({
-            Title = "Theme",
-            Content = v.." — перезапусти скрипт, если цвета UI не поменялись",
-            Duration = 4,
-        })
-    end,
-})
-
-Tabs.Misc:AddSection("Язык / Language")
-Tabs.Misc:AddDropdown("LangSelect", {
-    Title = "Язык интерфейса",
-    Values = {"Русский", "English"},
-    Default = (Lang.current == "ru") and "Русский" or "English",
-    Multi = false,
-    Callback = function(v)
-        local newLang = (v == "English") and "en" or "ru"
-        if newLang ~= Lang.current then
-            Lang.current = newLang
-            Fluent:Notify({ Title = "Language", Content = "Перезапусти скрипт", Duration = 5 })
-        end
-    end,
-})
-
-Tabs.Misc:AddSection("Debug")
-Tabs.Misc:AddToggle("LogsOn", {
-    Title = "Печатать логи", Default = false,
-    Callback = function(v) AW.LOGS = v end,
-})
-Tabs.Misc:AddButton({
-    Title = "Сбросить настройки AW",
-    Callback = function()
-        AW.TARGET=75; AW.FALL_SPD=-3; AW.RISE_SPD=4
-        AW.PULSE_MIN=0.06; AW.PULSE_MAX=0.2
-        AW.SMOOTH=0.5; AW.OVER=77; AW.KICK_TIME=0.3
-        AW.Cruise=false; AW.PEnabled=true
-        AW.PFrom=82; AW.PTo=180
-        if Options.AWTarget then Options.AWTarget:SetValue(75) end
-        if Options.AWOver then Options.AWOver:SetValue(77) end
-        if Options.AWKick then Options.AWKick:SetValue(0.3) end
-        if Options.AWPFrom then Options.AWPFrom:SetValue(82) end
-        if Options.AWPTo then Options.AWPTo:SetValue(180) end
-        if Options.AWPulseMin then Options.AWPulseMin:SetValue(0.06) end
-        if Options.AWPulseMax then Options.AWPulseMax:SetValue(0.2) end
-        if Options.AWSmooth then Options.AWSmooth:SetValue(0.5) end
-    end,
-})
 
 -- ==================== Z TAP LISTENER ====================
 local zTapQueue = {}
