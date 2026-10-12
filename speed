@@ -1,4 +1,4 @@
---[[ Sashamotyan Hub — Fluent v11 ]]
+--[[ Sashamotyan Hub — Fluent v13 ]]
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
@@ -168,20 +168,14 @@ local SyncCfg = {
     Interval = 0.4,
     ShowTrails = true,
     ShowTags = true,
-    ShowMyInfo = false,
     DrawDistance = 500,
 }
 
 local mySyncId
 do
-    local seed = tostring(math.random(100000, 999999))
-    local ok, saved = pcall(function() return readfile("SashamotyanHub_MyId.txt") end)
-    if ok and saved and #saved >= 6 then
-        mySyncId = saved
-    else
-        mySyncId = seed
-        pcall(function() writefile("SashamotyanHub_MyId.txt", mySyncId) end)
-    end
+    local uid = tostring(LocalPlayer.UserId or "0")
+    local rand = tostring(math.random(1000, 9999))
+    mySyncId = uid .. "_" .. rand
 end
 
 local RemotePlayers = {}
@@ -617,6 +611,25 @@ local function findPlayerByName(name)
     return nil
 end
 
+local function getTrailPartPath()
+    if not trailHostPart or not trailHostPart.Parent then return "" end
+    local char = LocalPlayer.Character
+    if not char then return "" end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return "" end
+    local car = hum.SeatPart.Parent
+    if not car then return "" end
+
+    local segments = {}
+    local node = trailHostPart
+    while node and node ~= car do
+        table.insert(segments, 1, node.Name)
+        node = node.Parent
+    end
+    if node ~= car then return "" end
+    return table.concat(segments, ".")
+end
+
 local function sendMyData()
     if not SyncCfg.Enabled then return end
 
@@ -641,12 +654,20 @@ local function sendMyData()
         aw = AW.Enabled and (AW.State or "ON") or "OFF",
         trail = TrailCfg.Enabled and 1 or 0,
         trailMode = TrailCfg.Mode,
+        trailPath = getTrailPartPath(),
         color1 = {math.floor(TrailCfg.Color1.R*255), math.floor(TrailCfg.Color1.G*255), math.floor(TrailCfg.Color1.B*255)},
         color2 = {math.floor(TrailCfg.Color2.R*255), math.floor(TrailCfg.Color2.G*255), math.floor(TrailCfg.Color2.B*255)},
         trailLifetime = TrailCfg.Lifetime,
         trailWidth = TrailCfg.FlatWidth,
         trailRotation = TrailCfg.FlatRotation,
         trailOffsetY = TrailCfg.FlatHeight,
+        trailOffsetX = TrailCfg.FlatOffsetX,
+        trailOffsetZ = TrailCfg.FlatOffsetZ,
+        trailColorBright = TrailCfg.Brightness,
+        trailColorTrans = TrailCfg.Transparency,
+        trailOffX = TrailCfg.OffsetX,
+        trailOffY = TrailCfg.OffsetY,
+        trailOffZ = TrailCfg.OffsetZ,
     }
 
     pcall(function()
@@ -756,43 +777,138 @@ end
 local function createRemoteTrail(plr, data)
     local char = plr.Character
     if not char then return nil end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or not hum.SeatPart then return nil end
+    local seat = hum.SeatPart
+    if not seat:IsA("BasePart") then return nil end
 
-    local existing = hrp:FindFirstChild("SH_SyncTrail")
-    if existing then existing:Destroy() end
-
-    local a0 = Instance.new("Attachment")
-    a0.Name = "SH_TrailA0"
-    a0.Parent = hrp
-
-    local a1 = Instance.new("Attachment")
-    a1.Name = "SH_TrailA1"
-    a1.Parent = hrp
+    local car = seat.Parent
+    if not car then return nil end
 
     local c1 = data.color1 or {160, 100, 255}
     local c2 = data.color2 or {255, 100, 255}
     local color1 = Color3.fromRGB(c1[1], c1[2], c1[3])
     local color2 = Color3.fromRGB(c2[1], c2[2], c2[3])
+    local lifetime = data.trailLifetime or 0.6
+    local width = data.trailWidth or 1.5
+    local trans = safeNum(data.trailColorTrans, 0.2)
+    local bright = safeNum(data.trailColorBright, 0.6)
+
+    if data.trailMode == "flat" then
+        local target = nil
+        if data.trailPath and data.trailPath ~= "" then
+            local node = car
+            for seg in string.gmatch(data.trailPath, "[^%.]+") do
+                node = node:FindFirstChild(seg)
+                if not node then break end
+            end
+            if node and node:IsA("BasePart") then target = node end
+        end
+        if not target then target = findRearPart(car) end
+        if not target then target = seat end
+
+        local hostPart = Instance.new("Part")
+        hostPart.Name = "SH_SyncFlatHost"
+        hostPart.Anchored = true
+        hostPart.CanCollide = false
+        hostPart.CanQuery = false
+        hostPart.CanTouch = false
+        hostPart.Transparency = 1
+        hostPart.Size = Vector3.new(0.1, 0.1, 0.1)
+        hostPart.CFrame = target.CFrame
+        hostPart.Parent = workspace
+
+        local halfW = width / 2
+        if halfW < 0.2 then halfW = 0.2 end
+
+        local a0 = Instance.new("Attachment")
+        a0.Name = "SH_TrailA0"
+        a0.Position = Vector3.new(halfW, 0, 0)
+        a0.Parent = hostPart
+
+        local a1 = Instance.new("Attachment")
+        a1.Name = "SH_TrailA1"
+        a1.Position = Vector3.new(-halfW, 0, 0)
+        a1.Parent = hostPart
+
+        local trail = Instance.new("Trail")
+        trail.Name = "SH_SyncTrail"
+        trail.Attachment0 = a0
+        trail.Attachment1 = a1
+        trail.Lifetime = lifetime
+        trail.Color = ColorSequence.new(color1, color2)
+        trail.Transparency = NumberSequence.new(trans)
+        trail.LightEmission = math.clamp(bright, 0, 1)
+        trail.LightInfluence = 1 - math.clamp(bright, 0, 1)
+        trail.FaceCamera = false
+        trail.Parent = hostPart
+
+        return {
+            inst = trail, a0 = a0, a1 = a1,
+            host = hostPart, flatMode = true, targetRef = target,
+            flatOffsetX = safeNum(data.trailOffsetX, 0),
+            flatOffsetZ = safeNum(data.trailOffsetZ, 0),
+            flatHeight = safeNum(data.trailOffsetY, 0.05),
+            flatRotation = safeNum(data.trailRotation, 0),
+        }
+    end
+
+    local target = nil
+    if data.trailPath and data.trailPath ~= "" then
+        local node = car
+        for seg in string.gmatch(data.trailPath, "[^%.]+") do
+            node = node:FindFirstChild(seg)
+            if not node then break end
+        end
+        if node and node:IsA("BasePart") then target = node end
+    end
+    if not target then target = findRearPart(car) end
+    if not target then target = seat end
+
+    local existing = target:FindFirstChild("SH_SyncTrail")
+    if existing then existing:Destroy() end
+    local ex2 = seat:FindFirstChild("SH_SyncTrail")
+    if ex2 then ex2:Destroy() end
+
+    local halfW = width / 2
+    if halfW < 0.2 then halfW = 0.2 end
+    local offX = safeNum(data.trailOffX, 0)
+    local offY = safeNum(data.trailOffY, 0)
+    local offZ = safeNum(data.trailOffZ, 0)
+
+    local a0 = Instance.new("Attachment")
+    a0.Name = "SH_TrailA0"
+    a0.Position = Vector3.new(offX + halfW, offY, offZ)
+    a0.Parent = target
+
+    local a1 = Instance.new("Attachment")
+    a1.Name = "SH_TrailA1"
+    a1.Position = Vector3.new(offX - halfW, offY, offZ)
+    a1.Parent = target
 
     local trail = Instance.new("Trail")
     trail.Name = "SH_SyncTrail"
     trail.Attachment0 = a0
     trail.Attachment1 = a1
-    trail.Lifetime = data.trailLifetime or 0.6
+    trail.Lifetime = lifetime
     trail.Color = ColorSequence.new(color1, color2)
-    trail.LightEmission = 0.6
+    trail.Transparency = NumberSequence.new(trans)
+    trail.LightEmission = math.clamp(bright, 0, 1)
+    trail.LightInfluence = 1 - math.clamp(bright, 0, 1)
     trail.FaceCamera = true
-    trail.Parent = hrp
+    trail.Parent = target
 
-    return { inst = trail, a0 = a0, a1 = a1 }
+    return { inst = trail, a0 = a0, a1 = a1, host = target, flatMode = false }
 end
 
 local function cleanupRemote(id)
     local r = RemotePlayers[id]
     if not r then return end
     if r.tag and r.tag.gui then r.tag.gui:Destroy() end
-    if r.trail and r.trail.inst then r.trail.inst:Destroy() end
+    if r.trail then
+        if r.trail.inst then r.trail.inst:Destroy() end
+        if r.trail.host and r.trail.flatMode then r.trail.host:Destroy() end
+    end
     RemotePlayers[id] = nil
 end
 
@@ -842,9 +958,29 @@ local function syncTick()
                             end
 
                             if SyncCfg.ShowTrails and rawData.trail == 1 then
+                                local needRebuild = false
                                 if not r.trail or not r.trail.inst or not r.trail.inst.Parent then
+                                    needRebuild = true
+                                elseif not r.trail.flatMode and r.trail.host and not r.trail.host.Parent then
+                                    needRebuild = true
+                                elseif r.trail.trailMode ~= rawData.trailMode then
+                                    needRebuild = true
+                                end
+
+                                if needRebuild then
+                                    if r.trail then
+                                        if r.trail.inst then r.trail.inst:Destroy() end
+                                        if r.trail.host and r.trail.flatMode then r.trail.host:Destroy() end
+                                    end
                                     r.trail = createRemoteTrail(plr, rawData)
+                                    if r.trail then r.trail.trailMode = rawData.trailMode end
                                 else
+                                    if r.trail then
+                                        r.trail.flatOffsetX = safeNum(rawData.trailOffsetX, 0)
+                                        r.trail.flatOffsetZ = safeNum(rawData.trailOffsetZ, 0)
+                                        r.trail.flatHeight = safeNum(rawData.trailOffsetY, 0.05)
+                                        r.trail.flatRotation = safeNum(rawData.trailRotation, 0)
+                                    end
                                     r.trail.inst.Lifetime = rawData.trailLifetime or 0.6
                                     local c1 = rawData.color1 or {160,100,255}
                                     local c2 = rawData.color2 or {255,100,255}
@@ -852,14 +988,38 @@ local function syncTick()
                                         Color3.fromRGB(c1[1], c1[2], c1[3]),
                                         Color3.fromRGB(c2[1], c2[2], c2[3])
                                     )
+                                    r.trail.inst.Transparency = NumberSequence.new(safeNum(rawData.trailColorTrans, 0.2))
+                                    r.trail.inst.LightEmission = math.clamp(safeNum(rawData.trailColorBright, 0.6), 0, 1)
+                                    r.trail.inst.LightInfluence = 1 - math.clamp(safeNum(rawData.trailColorBright, 0.6), 0, 1)
+
+                                    local hw = (rawData.trailWidth or 1.5) / 2
+                                    if hw < 0.2 then hw = 0.2 end
+                                    local offX = safeNum(rawData.trailOffX, 0)
+                                    local offY = safeNum(rawData.trailOffY, 0)
+                                    local offZ = safeNum(rawData.trailOffZ, 0)
+                                    if not r.trail.flatMode then
+                                        if r.trail.a0 then r.trail.a0.Position = Vector3.new(offX + hw, offY, offZ) end
+                                        if r.trail.a1 then r.trail.a1.Position = Vector3.new(offX - hw, offY, offZ) end
+                                    else
+                                        if r.trail.a0 then r.trail.a0.Position = Vector3.new(hw, 0, 0) end
+                                        if r.trail.a1 then r.trail.a1.Position = Vector3.new(-hw, 0, 0) end
+                                    end
                                 end
                             else
-                                if r.trail and r.trail.inst then r.trail.inst:Destroy() r.trail = nil end
+                                if r.trail then
+                                    if r.trail.inst then r.trail.inst:Destroy() end
+                                    if r.trail.host and r.trail.flatMode then r.trail.host:Destroy() end
+                                    r.trail = nil
+                                end
                             end
                         else
                             if r then
                                 if r.tag and r.tag.gui then r.tag.gui:Destroy() r.tag = nil end
-                                if r.trail and r.trail.inst then r.trail.inst:Destroy() r.trail = nil end
+                                if r.trail then
+                                    if r.trail.inst then r.trail.inst:Destroy() end
+                                    if r.trail.host and r.trail.flatMode then r.trail.host:Destroy() end
+                                    r.trail = nil
+                                end
                             end
                         end
                     end
@@ -892,7 +1052,10 @@ local function hookPlayerChar(plr)
     plr.CharacterAdded:Connect(function()
         for id, r in pairs(RemotePlayers) do
             if r.tag and r.tag.gui then r.tag.gui:Destroy() end
-            if r.trail and r.trail.inst then r.trail.inst:Destroy() end
+            if r.trail then
+                if r.trail.inst then r.trail.inst:Destroy() end
+                if r.trail.host and r.trail.flatMode then r.trail.host:Destroy() end
+            end
             RemotePlayers[id] = nil
         end
     end)
@@ -2069,6 +2232,39 @@ local function pressZShort()
 end
 
 RunService.Heartbeat:Connect(function(dt)
+    -- Обновление позиции плоских трейлов других игроков
+    if SyncCfg.Enabled then
+        for id, r in pairs(RemotePlayers) do
+            if r.trail and r.trail.flatMode and r.trail.host and r.trail.host.Parent and r.trail.targetRef then
+                local tr = r.trail.targetRef
+                if tr and tr.Parent then
+                    local pos = tr.Position
+                    local look = tr.CFrame.LookVector
+                    local right = tr.CFrame.RightVector
+                    local offX = safeNum(r.trail.flatOffsetX, 0)
+                    local offZ = safeNum(r.trail.flatOffsetZ, 0)
+                    local offY = safeNum(r.trail.flatHeight, 0.05)
+                    local rot = safeNum(r.trail.flatRotation, 0)
+
+                    local flatLookUnit = Vector3.new(look.X, 0, look.Z)
+                    if flatLookUnit.Magnitude < 0.01 then flatLookUnit = Vector3.new(1, 0, 0) end
+                    flatLookUnit = flatLookUnit.Unit
+                    local offset = right * offX + flatLookUnit * offZ
+
+                    local groundY = pos.Y - (tr.Size.Y / 2)
+                    local flatPos = Vector3.new(
+                        pos.X + offset.X,
+                        groundY + offY,
+                        pos.Z + offset.Z
+                    )
+                    local cf = CFrame.lookAt(flatPos, flatPos + flatLookUnit)
+                    cf = cf * CFrame.Angles(0, math.rad(math.floor(rot + 0.5)), 0)
+                    r.trail.host.CFrame = cf
+                end
+            end
+        end
+    end
+
     if TimeLock.Active then
         local want = roundInt(TimeLock.Value)
         if math.abs(safeNum(Lighting.ClockTime, 0) - want) > 0.3 then
