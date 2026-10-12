@@ -1289,6 +1289,18 @@ local function buildVisualConfig()
             Color1={TrailCfg.Color1.R, TrailCfg.Color1.G, TrailCfg.Color1.B},
             Color2={TrailCfg.Color2.R, TrailCfg.Color2.G, TrailCfg.Color2.B},
         },
+        Lighting = {
+            Brightness = safeNum(Lighting.Brightness, 1),
+            ClockTime = safeNum(Lighting.ClockTime, 14),
+            ExposureCompensation = safeNum(Lighting.ExposureCompensation, 0),
+            GlobalShadows = Lighting.GlobalShadows,
+            Ambient = {Lighting.Ambient.R, Lighting.Ambient.G, Lighting.Ambient.B},
+            OutdoorAmbient = {Lighting.OutdoorAmbient.R, Lighting.OutdoorAmbient.G, Lighting.OutdoorAmbient.B},
+            EnvironmentDiffuseScale = safeNum(Lighting.EnvironmentDiffuseScale, 0),
+            EnvironmentSpecularScale = safeNum(Lighting.EnvironmentSpecularScale, 0),
+            TimeLockActive = TimeLock.Active,
+            TimeLockValue = safeNum(TimeLock.Value, 14),
+        },
         CC = { Brightness=CC.Brightness, Contrast=CC.Contrast, Saturation=CC.Saturation,
                TintColor=CC.TintColor and {CC.TintColor.R, CC.TintColor.G, CC.TintColor.B} or nil },
         BL = { Intensity=BL.Intensity, Size=BL.Size, Threshold=BL.Threshold },
@@ -1324,6 +1336,7 @@ end
 
 local function applyVisualConfig(cfg)
     if type(cfg) ~= "table" then return end
+
     if cfg.HUD then
         for k, v in pairs(cfg.HUD) do
             if k == "Accent" and type(v) == "table" then HUD.Accent = Color3.new(unpack(v))
@@ -1337,6 +1350,7 @@ local function applyVisualConfig(cfg)
         if hudShadow then hudShadow.Visible = HUD.Enabled end
         applyHUDColors()
     end
+
     if cfg.Trail then
         TrailCfg.Enabled = cfg.Trail.Enabled or false
         TrailCfg.Lifetime = safeNum(cfg.Trail.Lifetime, 0.6)
@@ -1359,6 +1373,21 @@ local function applyVisualConfig(cfg)
             if TrailCfg.Mode == "flat" then rebuildFlatTrail() else rebuildTrail() end
         end
     end
+
+    if cfg.Lighting then
+        local L = cfg.Lighting
+        if L.Brightness then Lighting.Brightness = safeNum(L.Brightness, 1) end
+        if L.ClockTime then Lighting.ClockTime = safeNum(L.ClockTime, 14) end
+        if L.ExposureCompensation then Lighting.ExposureCompensation = safeNum(L.ExposureCompensation, 0) end
+        if L.GlobalShadows ~= nil then Lighting.GlobalShadows = L.GlobalShadows end
+        if type(L.Ambient) == "table" then Lighting.Ambient = Color3.new(unpack(L.Ambient)) end
+        if type(L.OutdoorAmbient) == "table" then Lighting.OutdoorAmbient = Color3.new(unpack(L.OutdoorAmbient)) end
+        if L.EnvironmentDiffuseScale then Lighting.EnvironmentDiffuseScale = safeNum(L.EnvironmentDiffuseScale, 0) end
+        if L.EnvironmentSpecularScale then Lighting.EnvironmentSpecularScale = safeNum(L.EnvironmentSpecularScale, 0) end
+        if L.TimeLockActive ~= nil then TimeLock.Active = L.TimeLockActive end
+        if L.TimeLockValue then TimeLock.Value = safeNum(L.TimeLockValue, 14) end
+    end
+
     if cfg.CC then
         CC.Brightness = safeNum(cfg.CC.Brightness, 0)
         CC.Contrast = safeNum(cfg.CC.Contrast, 0)
