@@ -1,10 +1,9 @@
---[[ Sashamotyan Hub — Fluent v13 ]]
+--[[ Sashamotyan Hub — Fluent v14 (Real anti-detect) ]]
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Players    = game:GetService("Players")
 local UIS        = game:GetService("UserInputService")
-local VIM        = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 local Lighting   = game:GetService("Lighting")
 local HttpService = game:GetService("HttpService")
@@ -17,6 +16,18 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
     Humanoid  = char:WaitForChild("Humanoid")
 end)
+
+-- ==================== VK-КОДЫ (для keypress/keyrelease) ====================
+local VK = {
+    W = 0x57, A = 0x41, S = 0x53, D = 0x44,
+    Q = 0x51, E = 0x45, Z = 0x5A, P = 0x50,
+    Ctrl = 0x11, Space = 0x20,
+}
+
+if not keypress or not keyrelease then
+    warn("[Hub] keypress/keyrelease недоступны в этом экзекьюторе")
+    return
+end
 
 -- ==================== ЦВЕТА ТЕМ ====================
 local ThemeColors = {
@@ -537,14 +548,47 @@ local function getPitch()
     return smoothPitch
 end
 
-local function sendW(d) if d == wSent then return end wSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.W, false, game) end
-local function sendS(d) if d == sSent then return end sSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.S, false, game) end
-local function sendA(d) if d == aSent then return end aSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.A, false, game) end
-local function sendD(d) if d == dSent then return end dSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.D, false, game) end
-local function sendQ(d) if d == qSent then return end qSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.Q, false, game) end
-local function sendE(d) if d == eSent then return end eSent = d; VIM:SendKeyEvent(d, Enum.KeyCode.E, false, game) end
-local function sendCtrl(d) if d == ctrlVirt then return end ctrlVirt = d; VIM:SendKeyEvent(d, Enum.KeyCode.LeftControl, false, game) end
-local function setP(d) if d == pIsDown then return end pIsDown = d; VIM:SendKeyEvent(d, AW.PKey, false, game) end
+-- ==================== keypress / keyrelease ====================
+local function sendW(d)
+    if d == wSent then return end
+    wSent = d
+    if d then keypress(VK.W) else keyrelease(VK.W) end
+end
+local function sendS(d)
+    if d == sSent then return end
+    sSent = d
+    if d then keypress(VK.S) else keyrelease(VK.S) end
+end
+local function sendA(d)
+    if d == aSent then return end
+    aSent = d
+    if d then keypress(VK.A) else keyrelease(VK.A) end
+end
+local function sendD(d)
+    if d == dSent then return end
+    dSent = d
+    if d then keypress(VK.D) else keyrelease(VK.D) end
+end
+local function sendQ(d)
+    if d == qSent then return end
+    qSent = d
+    if d then keypress(VK.Q) else keyrelease(VK.Q) end
+end
+local function sendE(d)
+    if d == eSent then return end
+    eSent = d
+    if d then keypress(VK.E) else keyrelease(VK.E) end
+end
+local function sendCtrl(d)
+    if d == ctrlVirt then return end
+    ctrlVirt = d
+    if d then keypress(VK.Ctrl) else keyrelease(VK.Ctrl) end
+end
+local function setP(d)
+    if d == pIsDown then return end
+    pIsDown = d
+    if d then keypress(VK.P) else keyrelease(VK.P) end
+end
 
 -- ==================== LIGHTING / FX ====================
 local FX_NAMES = { ColorCorrection="SH_ColorCorrection", Bloom="SH_Bloom", SunRays="SH_SunRays", Blur="SH_Blur", Atmosphere="SH_Atmosphere" }
@@ -595,7 +639,7 @@ local function resetLighting()
     end
 end
 
--- ==================== СИНХРОНИЗАЦИЯ (функции) ====================
+-- ==================== СИНХРОНИЗАЦИЯ ====================
 local function findPlayerByName(name)
     if playerNameCache[name] then
         local plr = playerNameCache[name]
@@ -1713,9 +1757,10 @@ local function buildUI()
             ctrlVirt = false
             pIsDown = false
             zSent = false
-            for _, k in ipairs({Enum.KeyCode.W, Enum.KeyCode.S, Enum.KeyCode.A, Enum.KeyCode.D, Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.LeftControl, Enum.KeyCode.Z, AW.PKey}) do
-                VIM:SendKeyEvent(false, k, false, game)
-            end
+            pcall(function()
+                keyrelease(VK.W); keyrelease(VK.S); keyrelease(VK.A); keyrelease(VK.D)
+                keyrelease(VK.Q); keyrelease(VK.E); keyrelease(VK.Ctrl); keyrelease(VK.Z); keyrelease(VK.P)
+            end)
             Replay.Playing = true
             Replay.PlayStartTime = tick()
             Replay._playIdx = 1
@@ -1728,7 +1773,7 @@ local function buildUI()
             Replay.Playing = false
             sendW(false); sendS(false); sendA(false); sendD(false)
             sendQ(false); sendE(false); sendCtrl(false); setP(false)
-            VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+            pcall(function() keyrelease(VK.Z) end)
         end,
     })
     Tabs.Replay:AddButton({
@@ -2223,14 +2268,6 @@ local wTimer, wLockout = 0, 0
 local kickTimer, kickArmed = 0, false
 local cruiseRelease = 0
 
-local function pressZShort()
-    task.spawn(function()
-        VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-        task.wait(0.08)
-        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
-    end)
-end
-
 RunService.Heartbeat:Connect(function(dt)
     -- Обновление позиции плоских трейлов других игроков
     if SyncCfg.Enabled then
@@ -2408,7 +2445,11 @@ RunService.Heartbeat:Connect(function(dt)
         while idx <= #buf and safeNum(buf[idx].t, 0) <= now do
             local e = buf[idx]
             if (e.zt or 0) == 1 then
-                pressZShort()
+                task.spawn(function()
+                    keypress(VK.Z)
+                    task.wait(0.08)
+                    keyrelease(VK.Z)
+                end)
             else
                 sendW(e.w == 1); sendS(e.s == 1)
                 sendA((e.a or 0) == 1); sendD((e.d or 0) == 1)
